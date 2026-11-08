@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0b0c0f" />
+  <title>Yankee Drive – AI Poradňa & Zákaznícka Podpora 24/7</title>
+  <meta name="description" content="Online AI poradňa Yankee Drive Trebišov – výber detailingového balíčka, cenník tepovania, leštenia laku, vyzdvihnutie auta a autokozmetika Koch Chemie." />
+  <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+  <style>
+    :root {
+      --bg: #0b0c0f;
+      --surface: #13161c;
+      --elevated: #1b1f28;
+      --border: #282e3b;
+      --text: #f5f6f8;
+      --muted: #9ca3b0;
+      --amber: #f59e0b;
+      --amber-hover: #fbbf24;
+      --amber-soft: rgba(245, 158, 11, 0.14);
+      --green: #10b981;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Header */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-logo {
+      width: 40px; height: 40px; border-radius: 11px;
+      background: var(--amber); color: #0b0c0f;
+      font-weight: 900; font-size: 15px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .brand-title { font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+    .online-badge {
+      font-size: 12px; font-weight: 600;
+      padding: 2px 8px; border-radius: 999px;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--green);
+      display: inline-flex; align-items: center; gap: 5px;
+    }
+    .online-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+    }
+    .brand-sub { font-size: 12px; color: var(--muted); }
+    .header-links { display: flex; align-items: center; gap: 8px; }
+    .btn-top {
+      padding: 8px 13px; border-radius: 9px;
+      font-size: 12px; font-weight: 700;
+      text-decoration: none;
+      border: 1px solid var(--border);
+      background: var(--elevated);
+      color: var(--text);
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .btn-top.primary {
+      background: var(--amber);
+      color: #0b0c0f;
+      border-color: var(--amber);
+    }
+    .btn-top:hover { opacity: 0.9; }
+
+    /* Main Chat Area */
+    .chat-container {
+      flex: 1;
+      max-width: 900px;
+      width: 100%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding: 0 12px;
+    }
+
+    .messages-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 18px 4px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      scroll-behavior: smooth;
+    }
+
+    .msg-row {
+      display: flex;
+      gap: 10px;
+      max-width: 88%;
+      align-items: flex-start;
+    }
+    .msg-row.user {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+    .avatar {
+      width: 32px; height: 32px; border-radius: 9px;
+      background: var(--amber); color: #0b0c0f;
+      font-weight: 900; font-size: 12px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .msg-row.user .avatar {
+      background: var(--elevated);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .bubble {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      border-top-left-radius: 4px;
+      padding: 13px 16px;
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .msg-row.user .bubble {
+      background: var(--amber);
+      color: #0b0c0f;
+      border-color: var(--amber);
+      border-top-left-radius: 16px;
+      border-top-right-radius: 4px;
+      font-weight: 600;
+    }
+    .bubble ul {
+      padding-left: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .bubble strong { color: #ffffff; }
+    .msg-row.user .bubble strong { color: #0b0c0f; }
+
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+    .cta-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      text-decoration: none;
+      background: var(--amber-soft);
+      color: var(--amber);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      cursor: pointer;
+    }
+    .cta-btn.solid {
+      background: var(--amber);
+      color: #0b0c0f;
+    }
+
+    /* Quick Prompt Chips */
+    .quick-prompts {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 8px 4px;
+      flex-shrink: 0;
+      scrollbar-width: none;
+    }
+    .quick-prompts::-webkit-scrollbar { display: none; }
+    .prompt-chip {
+      padding: 8px 13px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }
+    .prompt-chip:hover {
+      border-color: var(--amber);
+      background: var(--elevated);
+    }
+
+    /* Input Bar */
+    .input-bar {
+      padding: 10px 4px 16px;
+      flex-shrink: 0;
+    }
+    .input-form {
+      display: flex;
+      gap: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 6px 6px 6px 14px;
+      align-items: center;
+    }
+    .input-form:focus-within {
+      border-color: var(--amber);
+    }
+    .chat-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      padding: 6px 0;
+    }
+    .send-btn {
+      padding: 10px 18px;
+      border-radius: 10px;
+      border: none;
+      background: var(--amber);
+      color: #0b0c0f;
+      font-weight: 800;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .send-btn:hover { background: var(--amber-hover); }
+
+    @media (max-width: 640px) {
+      .msg-row { max-width: 95%; }
+      .brand-sub { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="brand">
+      <div class="brand-logo">YD</div>
+      <div>
+        <div class="brand-title">
+          <span>Yankee Drive – AI Poradňa</span>
+          <span class="online-badge"><span class="online-dot"></span>Online 24/7</span>
+        </div>
+        <div class="brand-sub">Autodetailing, tepovanie, vyzdvihnutie vozidla & e-shop Koch Chemie</div>
+      </div>
+    </div>
+    <div class="header-links">
+      <a href="https://www.yankeedrive.sk" class="btn-top">← Späť na web</a>
+      <a href="https://www.yankeedrive.sk" class="btn-top primary">📅 Online Rezervácia</a>
+    </div>
+  </header>
+
+  <main class="chat-container">
+    <div id="messages" class="messages-area"></div>
+
+    <div class="quick-prompts">
+      <button class="prompt-chip" onclick="askQuestion('Ktorý detailingový balíček mi odporúčate?')">🚗 Ktorý balíček vybrať?</button>
+      <button class="prompt-chip" onclick="askQuestion('Koľko stojí hĺbkové tepovanie auta a ako dlho schne?')">🛋️ Tepovanie & schnutie</button>
+      <button class="prompt-chip" onclick="askQuestion('Ako funguje vyzdvihnutie a vrátenie auta (Door-to-Door)?')">🔑 Vyzdvihnutie auta u mňa</button>
+      <button class="prompt-chip" onclick="askQuestion('Odstránite z laku aj škrabance z kefovej umyvárne?')">💎 Leštenie laku & škrabance</button>
+      <button class="prompt-chip" onclick="askQuestion('Aké prípravky Koch Chemie z e-shopu odporúčate na interiér a lak?')">🧴 Poradiť Koch Chemie</button>
+      <button class="prompt-chip" onclick="askQuestion('Čistíte a tepujete aj sedačky a koberce v domácnosti?')">🏠 Tepovanie domácností</button>
+      <button class="prompt-chip" onclick="askQuestion('Máte darčekové poukazy a vernostný program?')">🎁 Darčekové poukazy & body</button>
+    </div>
+
+    <div class="input-bar">
+      <form class="input-form" onsubmit="handleForm(event)">
+        <input id="user-input" type="text" class="chat-input" placeholder="Opýtajte sa na čistenie auta, ceny, vyzdvihnutie vozidla alebo Koch Chemie..." autocomplete="off" />
+        <button type="submit" class="send-btn">Odoslať</button>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    const msgContainer = document.getElementById("messages");
+    const userInput = document.getElementById("user-input");
+
+    function normalize(str) {
+      return (str || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+    }
+
+    function appendMessage(role, htmlContent, showActions = true, rawQuery = "") {
+      const row = document.createElement("div");
+      row.className = `msg-row ${role}`;
+      const avatarText = role === "user" ? "VY" : "YD";
+
+      let actionsHtml = "";
+      if (role === "assistant" && showActions) {
+        const waText = encodeURIComponent(
+          `Dobrý deň Yankee Drive, píšem z vašej online AI Poradne ohľadom: "${rawQuery || "rezervácie termínu"}". Prosím o viac info / termín.`
+        );
+        actionsHtml = `
+          <div class="cta-row">
+            <a href="https://www.yankeedrive.sk" target="_top" class="cta-btn solid">📅 Rezervovať termín online</a>
+            <a href="https://wa.me/421901788110?text=${waText}" target="_blank" rel="noopener" class="cta-btn">💬 Napísať na WhatsApp</a>
+            <a href="tel:+421940247133" class="cta-btn">📞 +421 940 247 133</a>
+          </div>
+        `;
+      }
+
+      row.innerHTML = `
+        <div class="avatar">${avatarText}</div>
+        <div class="bubble">
+          <div>${htmlContent}</div>
+          ${actionsHtml}
+        </div>
+      `;
+      msgContainer.appendChild(row);
+      msgContainer.scrollTop = msgContainer.scrollHeight;
+    }
+
+    function generateAIResponse(query) {
+      const q = normalize(query);
+
+      // 1. Leštenie laku / škrabance / Exclusive
+      if (q.includes("skraban") || q.includes("lesten") || q.includes("hologram") || q.includes("exclusive") || q.includes("matn")) {
+        return `
+          <p><strong>💎 Odstránenie škrabancov a strojové leštenie laku:</strong></p>
+          <p>Ľahké až stredne hlboké škrabance (kruhové „slniečka“ z kefových umyvární, jemné oderky a oxidáciu) vieme precíznym <strong>jednostupňovým strojovým leštením laku</strong> úplne odstrániť alebo výrazne zredukovať.</p>
+          <p>Odporúčame náš najvyšší balíček <strong>Yankee Exclusive (od 200 €, trvanie 1 – 3 dni)</strong>, ktorý zahŕňa:</p>
+          <ul>
+            <li>Všetky služby z balíka Yankee Štandard (vrátane hĺbkového tepovania / čistenia kože a dekontaminácie laku)</li>
+            <li><strong>Jednostupňové strojové leštenie laku</strong> pre zrkadlový lesk</li>
+            <li><strong>Prémiový syntetický sealant</strong> na lak (dlhodobá ochrana pred UV a soľou)</li>
+            <li><strong>Tekuté stierače</strong> na čelné a bočné sklá + <strong>tepelnú ochranu diskov</strong></li>
+            <li><strong>Kompletnú dezinfekciu interiéru a klimatizácie ozónom (O3)</strong></li>
+          </ul>
+          <p>💡 <em>Domáci tip z nášho e-shopu:</em> V ponuke máme aj kompletnú <strong>Koch Chemie sadu na leštenie auta (115 €)</strong>.</p>
+        `;
+      }
+
+      // 2. Tepovanie auta / schnutie / fľaky / koža
+      if ((q.includes("tepov") || q.includes("sedac") || q.includes("flak") || q.includes("schnut") || q.includes("schne") || q.includes("koza") || q.includes("koze")) && !q.includes("domac") && !q.includes("gauc") && !q.includes("koberec")) {
+        return `
+          <p><strong>🛋️ Hĺbkové tepovanie vozidla a starostlivosť o kožu:</strong></p>
+          <ul>
+            <li><strong>Samostatné hĺbkové tepovanie vozidla (sedačky + kufor):</strong> <strong>50 €</strong></li>
+            <li><strong>Kompletný sezónny balíček Yankee Štandard (interiér + tepovanie / koža + exteriér s dekontamináciou a voskom):</strong> <strong>od 80 €</strong> (cca 8 hodín)</li>
+          </ul>
+          <p><strong>⏱️ Ako dlho schne interiér po tepovaní?</strong><br>
+          Používame profesionálnu extrakčnú techniku s vysokovýkonným odsávaním, takže sedadlá nezostávajú premočené. Interiér je len mierne vlhký a úplne preschne za <strong>2 až 6 hodín</strong>.</p>
+          <p>🧴 <em>Pre kožené a alcantarové sedačky</em> používame špičkovú nemeckú chémiu <strong>COLOURLOCK Pol Star (12 €)</strong> a impregnáciu s UV filtrom <strong>COLOURLOCK Leather Care (19 €)</strong> – oboje nájdete aj v našom e-shope!</p>
+        `;
+      }
+
+      // 3. Tepovanie domácností / gauč / matrac / koberce
+      if (q.includes("domac") || q.includes("gauc") || q.includes("pohovk") || q.includes("matrac") || q.includes("koberec") || q.includes("byt")) {
+        return `
+          <p><strong>🏠 Čistenie a tepovanie domácností (prídeme priamo k vám):</strong></p>
+          <ul>
+            <li><strong>Tepovanie sedačiek, pohoviek, kresiel a matracov:</strong> <strong>od 20 € do 90 €</strong> (podľa veľkosti a znečistenia; napr. kreslo od 20 €, sedačka v tvare L od 75 €, matrac od 15 € / strana)</li>
+            <li><strong>Hĺbkové vysávanie kobercov a podláh:</strong> min. objednávka <strong>30 €</strong> (0,50 € / m²)</li>
+            <li><strong>Umývanie okien v domácnostiach (vrátane rámov a žalúzií):</strong> min. objednávka <strong>30 €</strong></li>
+            <li><strong>Ozónová dezinfekcia bytu / domu (proti zápachu, plesniam a alergénom):</strong> <strong>od 30 €</strong> podľa rozlohy</li>
+          </ul>
+        `;
+      }
+
+      // 4. Vyzdvihnutie auta / Door-to-door / kde pôsobíte / adresa
+      if (q.includes("vyzdvih") || q.includes("door") || q.includes("odvoz") || q.includes("pridete") || q.includes("adresa") || q.includes("kde ste") || q.includes("trebisov") || q.includes("michalovce") || q.includes("secovce")) {
+        return `
+          <p><strong>🔑 Služba Door-to-Door (Vyzdvihnutie a vrátenie vozidla):</strong></p>
+          <p>Nemusíte nikam chodiť ani čakať! Vaše vozidlo po dohode <strong>vyzdvihneme priamo u vás doma alebo v práci</strong> v regióne <strong>Trebišov, Milhostov, Michalovce, Sečovce a Sobrance</strong> a po dokončení zvoleného programu vám ho privezieme späť čisté a lesklé.</p>
+          <p><strong>📍 Adresa našej prevádzky:</strong> Milhostov 190, 075 01 Trebišov<br>
+          <strong>🕒 Otváracie hodiny:</strong> Pondelok – Nedeľa: 08:00 – 18:00 (pracujeme na objednávky)<br>
+          <strong>🎒 Čo spraviť pred odovzdaním auta?</strong> Stačí vypratať osobné veci, doklady a detské sedačky – o všetko ostatné sa postaráme my.</p>
+        `;
+      }
+
+      // 5. Ozón / klimatizácia / zápach
+      if (q.includes("ozon") || q.includes("zapach") || q.includes("klima") || q.includes("dezinfek") || q.includes("cigaret") || q.includes("pes")) {
+        return `
+          <p><strong>🌬️ Ozónové čistenie a odstránenie zápachu (O3):</strong></p>
+          <p>Profesionálna dezinfekcia ozónom likviduje 99,9 % baktérií, vírusov, plesní v klimatizácii a trvalo neutralizuje zápach po cigaretách, zvieratách či zatuchnutí.</p>
+          <ul>
+            <li><strong>Ozónové čistenie vozidla + klimatizácie:</strong> <strong>30 €</strong> (cca 60 min.)</li>
+            <li>V prémiovom balíčku <strong>Yankee Exclusive (od 200 €)</strong> máte ozónovú dezinfekciu už <strong>v cene</strong>!</li>
+            <li><strong>Domáci neutralizér pachu z e-shopu:</strong> Odporúčame <strong>Colourlock / Koch Chemie Fresh Up (21 €)</strong>, ktorý rozkladá molekuly pachu priamo pri zdroji.</li>
+          </ul>
+        `;
+      }
+
+      // 6. E-shop / Koch Chemie / autokozmetika
+      if (q.includes("koch") || q.includes("eshop") || q.includes("e-shop") || q.includes("kozmetik") || q.includes("uterak") || q.includes("pena") || q.includes("kolesa") || q.includes("disky") || q.includes("okna")) {
+        return `
+          <p><strong>🧴 Odporúčaná profesionálna autokozmetika Koch Chemie z nášho E-shopu:</strong></p>
+          <ul>
+            <li><strong>Sušenie a umývanie:</strong> Sušiaci uterák <em>Koch Chemie Pro Drying Towel 50x80 cm</em> (<strong>33 €</strong>), aktívna pH neutrálna pena <em>Gentle Snow Foam 1L</em> (<strong>20 €</strong>) alebo <em>TropicSnow</em> (<strong>13 €</strong>), umývacia rukavica (<strong>16 – 29 €</strong>).</li>
+            <li><strong>Interiér, plasty a koža:</strong> Univerzálny čistič <em>Green Star 1L</em> (<strong>10 €</strong>), <em>Profi sada pre čistý a voňavý interiér</em> (<strong>58 €</strong>), <em>Detailingová pohotovosť sada</em> (<strong>50 €</strong>), čistič kože a alcantary <em>COLOURLOCK Pol Star 1L</em> (<strong>12 €</strong>).</li>
+            <li><strong>Okná bez šmúh:</strong> <em>Koch Chemie Glass Cleaner 1L</em> (<strong>11 €</strong>), <em>The Finisher ClearView</em> (<strong>8 €</strong>) alebo kompletná <em>Sada na čistenie okien</em> (<strong>21 €</strong>).</li>
+            <li><strong>Disky, hrdza a asfalt:</strong> Čistič diskov <em>The Finisher WheelKing</em> (<strong>19 €</strong>), odstraňovač náletovej hrdze <em>Reactive Rust Remover</em> (<strong>19 €</strong>), odstraňovač asfaltu a živice <em>Eulex 1L</em> (<strong>19 €</strong>).</li>
+            <li><strong>Rýchly lesk laku:</strong> Detailer <em>Quick&Shine 1L</em> (<strong>14 €</strong>) alebo <em>The Finisher JustPerfect</em> (<strong>15 €</strong>).</li>
+          </ul>
+          <p>🚚 <strong>Doprava ZDARMA pri objednávke nad 80 €!</strong> Odosielame do 24–48 hodín kuriérom alebo cez Packetu / Z-BOX.</p>
+        `;
+      }
+
+      // 7. Darčekové poukazy / vernostný program / platba
+      if (q.includes("poukaz") || q.includes("darcek") || q.includes("vernost") || q.includes("bod") || q.includes("platb") || q.includes("faktur") || q.includes("kartou")) {
+        return `
+          <p><strong>🎁 Darčekové poukazy, Vernostný program & Platby:</strong></p>
+          <ul>
+            <li><strong>Darčekové poukazy (Yankee DriveCard):</strong> Dostupné v hodnotách <strong>10 €, 25 €, 50 € a 100 €</strong> – platia na všetky detailingové služby aj nákup autokozmetiky v e-shope!</li>
+            <li><strong>Vernostný program Yankee Drive:</strong> Za každé <strong>1 €</strong> nákupu (služby aj e-shop) získavate <strong>1 vernostný bod</strong>, ktorý môžete premeniť na zľavy pri ďalšej návšteve.</li>
+            <li><strong>Možnosti platby:</strong> Hotovosť, platobná karta (Visa, Mastercard), Apple Pay, Google Pay, alebo bezhotovostne na faktúru (pre firemných klientov).</li>
+          </ul>
+        `;
+      }
+
+      // Default: Kompletný prehľad balíčkov a cien
+      return `
+        <p><strong>🚗 Prehľad balíčkov a služieb Yankee Drive (Trebišov / Milhostov):</strong></p>
+        <ul>
+          <li><strong>✨ Yankee Refresh (od 45 € | cca 3 hod.):</strong> Ideálny na pravidelnú údržbu – bezpečné 3-fázové ručné umývanie, vyčistenie diskov a podbehov, hydrofóbny sealant pre lesk a odvod vody, kompletné vysávanie interiéru, kufra a vyčistenie okien.</li>
+          <li><strong>🧼 Yankee Štandard (od 80 € | cca 8 hod.):</strong> Najobľúbenejší sezónny reštart – všetko z Refresh + chemická dekontaminácia laku (odstránenie asfaltu a hrdze), ochranný vosk, <strong>hĺbkové tepovanie sedadiel</strong> (alebo čistenie a impregnácia kože) a detailné ošetrenie plastov s UV filtrom.</li>
+          <li><strong>💎 Yankee Exclusive (od 200 € | 1 – 3 dni):</strong> Prémiový komplet – všetko zo Štandard + <strong>jednostupňové strojové leštenie laku</strong>, prémiový sealant, tekuté stierače, ochrana diskov a <strong>dezinfekcia ozónom (O3)</strong>.</li>
+          <li><strong>🔧 Čiastkové služby:</strong> Hĺbkové tepovanie auta (<strong>50 €</strong>), Ozónová dezinfekcia (<strong>30 €</strong>), Základné ručné umytie (<strong>15 €</strong>), Vysávanie (<strong>15 €</strong>), Čistenie interiéru (<strong>15 €</strong>), Tekuté stierače (<strong>15 €</strong>), Okná (<strong>10 €</strong>), Rohože (<strong>7 €</strong>), Disky (<strong>5 €</strong>).</li>
+        </ul>
+        <p>🔑 <strong>Špeciálny benefit:</strong> Vozidlo u vás radi <strong>vyzdvihneme a po vyčistení privezieme späť</strong> (Trebišov, Michalovce, Sečovce, Sobrance).</p>
+      `;
+    }
+
+    function askQuestion(text) {
+      appendMessage("user", text, false);
+      setTimeout(() => {
+        const reply = generateAIResponse(text);
+        appendMessage("assistant", reply, true, text);
+      }, 280);
+    }
+
+    function handleForm(e) {
+      e.preventDefault();
+      const val = userInput.value.trim();
+      if (!val) return;
+      userInput.value = "";
+      askQuestion(val);
+    }
+
+    // Welcome message
+    appendMessage(
+      "assistant",
+      `
+        <p>Dobrý deň! 👋 Vitajte v <strong>AI Poradni Yankee Drive</strong>.</p>
+        <p>Som váš online detailingový poradca. Okamžite vám poradím s výberom balíčka, cenou za tepovanie či leštenie laku, službou <strong>vyzdvihnutia vozidla u vás doma/v práci</strong> alebo s výberom nemeckej autokozmetiky <strong>Koch Chemie</strong> z nášho e-shopu.</p>
+        <p>Kliknite na niektorú z rýchlych tém nižšie alebo mi napíšte svoju otázku:</p>
+      `,
+      false
+    );
+  </script>
+</body>
+</html>
