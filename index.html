@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Yankee Drive" />
-  <title>Yankee Drive – Mobilný Asistent</title>
+  <title>Yankee Drive – Mobilný & PC Asistent</title>
   <link rel="manifest" href="./manifest.json" />
   <link rel="icon" type="image/svg+xml" href="./icon.svg" />
   <link rel="apple-touch-icon" href="./icon.svg" />
@@ -32,7 +32,6 @@
       padding-bottom: 84px;
       line-height: 1.45;
     }
-    /* PIN Screen */
     #pin-overlay {
       position: fixed;
       inset: 0;
@@ -84,7 +83,6 @@
     }
     .pin-input:focus { outline: none; border-color: var(--amber); }
 
-    /* Topbar */
     .topbar {
       position: sticky;
       top: 0;
@@ -105,7 +103,7 @@
       display: flex; align-items: center; justify-content: center;
     }
     .container {
-      max-width: 680px;
+      max-width: 780px;
       margin: 0 auto;
       padding: 16px;
       display: flex;
@@ -134,9 +132,6 @@
       border-radius: 12px;
       padding: 12px;
     }
-    .stat-label { font-size: 12px; color: var(--muted); }
-    .stat-val { font-size: 18px; font-weight: 800; margin-top: 2px; color: var(--text); }
-
     .btn {
       display: inline-flex;
       align-items: center;
@@ -192,9 +187,33 @@
       font-size: 14px;
       font-family: inherit;
     }
-    .textarea { min-height: 125px; resize: vertical; }
+    .textarea { min-height: 120px; resize: vertical; }
 
-    /* Bottom Navigation */
+    .cust-item {
+      background: var(--elevated);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .cust-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .badge-pts {
+      background: var(--amber-soft);
+      color: var(--amber);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
     .bottom-nav {
       position: fixed;
       bottom: 0; left: 0; right: 0;
@@ -243,7 +262,6 @@
 </head>
 <body>
 
-  <!-- PIN Lock Screen -->
   <div id="pin-overlay">
     <div class="pin-card">
       <div class="logo-badge">YD</div>
@@ -257,13 +275,12 @@
     </div>
   </div>
 
-  <!-- Top Header -->
   <header class="topbar">
     <div class="topbar-left">
       <div class="mini-logo">YD</div>
       <div>
         <div style="font-size:15px;font-weight:800;">Yankee Drive</div>
-        <div style="font-size:12px;color:var(--muted);">Mobilný Firemný Asistent</div>
+        <div style="font-size:12px;color:var(--muted);">Firemný Asistent & Zákazníci</div>
       </div>
     </div>
     <button class="btn" style="padding:7px 11px;font-size:12px;" onclick="lockApp()">🔒 Zamknúť</button>
@@ -272,8 +289,42 @@
   <div id="toast" class="toast"></div>
 
   <main class="container">
-    <!-- 1. WHATSAPP PANEL (Default on Mobile for fast customer communication) -->
-    <section id="tab-wa" class="panel active">
+    <!-- 1. ZÁKAZNÍCI & EXCEL TABUĽKA -->
+    <section id="tab-customers" class="panel active">
+      <div class="card">
+        <div>
+          <div class="card-title">👥 Databáza zákazníkov & Stiahnutie do PC (Excel)</div>
+          <div class="card-sub">Automaticky synchronizované z Welcomio objednávok a rezervácií čistenia</div>
+        </div>
+
+        <div class="grid-2">
+          <button class="btn btn-amber" onclick="downloadCustomersCsv()">📥 Stiahnuť Zákazníkov (.CSV pre Excel)</button>
+          <button class="btn" onclick="downloadOrdersCsv()">📥 Stiahnuť Všetky Objednávky (.CSV)</button>
+        </div>
+
+        <div id="customers-list" style="display:flex;flex-direction:column;gap:10px;"></div>
+      </div>
+
+      <div class="card">
+        <div>
+          <div class="card-title">➕ Pridať nového zákazníka / čistenie do tabuľky</div>
+          <div class="card-sub">Pre telefonické alebo osobné objednávky mimo webu</div>
+        </div>
+        <div class="grid-2">
+          <input id="nc-name" type="text" class="input" placeholder="Meno a priezvisko" />
+          <input id="nc-phone" type="tel" class="input" placeholder="Telefón (+421...)" />
+        </div>
+        <div class="grid-2">
+          <input id="nc-email" type="email" class="input" placeholder="E-mail (voliteľné)" />
+          <input id="nc-price" type="number" class="input" placeholder="Suma (€) napr. 80" />
+        </div>
+        <input id="nc-service" type="text" class="input" placeholder="Služba / Produkt (napr. Yankee Štandard + Ozón)" />
+        <button class="btn btn-amber" onclick="addManualCustomer()">💾 Pridať do zoznamu zákazníkov</button>
+      </div>
+    </section>
+
+    <!-- 2. WHATSAPP PANEL -->
+    <section id="tab-wa" class="panel">
       <div class="card">
         <div>
           <div class="card-title">💬 Rýchla WhatsApp správa zákazníkovi</div>
@@ -296,12 +347,12 @@
       </div>
     </section>
 
-    <!-- 2. KALKULAČKA & CENNÍK PANEL -->
+    <!-- 3. KALKULAČKA PANEL -->
     <section id="tab-calc" class="panel">
       <div class="card">
         <div>
           <div class="card-title">🧮 Rýchla kalkulačka pri obhliadke auta</div>
-          <div class="card-sub">Naklikajte služby a odošlite cenovú ponuku zákazníkovi na WhatsApp alebo e-mail</div>
+          <div class="card-sub">Naklikajte služby a odošlite cenovú ponuku zákazníkovi na WhatsApp</div>
         </div>
 
         <div style="font-size:12px;font-weight:700;color:var(--muted);">1. Hlavný balíček:</div>
@@ -336,12 +387,12 @@
       </div>
     </section>
 
-    <!-- 3. E-MAILY PANEL -->
+    <!-- 4. E-MAILY & RECENZIE PANEL -->
     <section id="tab-mail" class="panel">
       <div class="card">
         <div>
           <div class="card-title">✉️ Generátor e-mailovej odpovede</div>
-          <div class="card-sub">Pripraví profesionálnu odpoveď a otvorí ju priamo vo vašej mailovej aplikácii alebo skopíruje</div>
+          <div class="card-sub">Pripraví profesionálnu odpoveď a otvorí ju priamo vo vašej mailovej aplikácii</div>
         </div>
 
         <div class="chip-grid">
@@ -359,64 +410,44 @@
           <button class="btn btn-amber" onclick="openMailApp()">✉️ Otvoriť v Mail apke</button>
           <button class="btn" onclick="copyById('m-body')">📋 Kopírovať text</button>
         </div>
-        <a href="https://mail.zoho.eu" target="_blank" rel="noopener" class="btn">📬 Otvoriť Zoho Mail v prehliadači ↗</a>
       </div>
-    </section>
 
-    <!-- 4. GOOGLE RECENZIE & FB/IG PANEL -->
-    <section id="tab-marketing" class="panel">
       <div class="card">
         <div>
           <div class="card-title">⭐ Odpoveď na Google Recenziu (Lokálne SEO)</div>
-          <div class="card-sub">Obsahuje kľúčové slová: autodetailing Trebišov, ručné umývanie áut, tepovanie</div>
         </div>
-
         <input id="rev-customer" type="text" class="input" placeholder="Meno zákazníka (napr. Peter)" oninput="updateReviewText()" />
         <select id="rev-service" class="select" onchange="updateReviewText()">
           <option value="refresh">Ručné umývanie & Yankee Refresh</option>
           <option value="standard">Hĺbkové tepovanie & Yankee Štandard</option>
           <option value="exclusive">Strojové leštenie laku & Yankee Exclusive</option>
         </select>
-
-        <textarea id="rev-text" class="textarea" style="min-height:110px;"></textarea>
+        <textarea id="rev-text" class="textarea" style="min-height:100px;"></textarea>
         <button class="btn btn-amber" onclick="copyById('rev-text')">📋 Kopírovať odpoveď na recenziu</button>
-      </div>
-
-      <div class="card">
-        <div>
-          <div class="card-title">📲 Priamy link pre zákazníka na Google Recenziu</div>
-          <div class="card-sub">Pošlite spokojnému zákazníkovi po odovzdaní vozidla</div>
-        </div>
-        <input id="rev-link" type="text" class="input" readonly value="https://search.google.com/local/writereview?placeid=ChIJ7717ljXVPkcR-3oLS6lkWaQ" />
-        <button class="btn" onclick="copyById('rev-link')">📋 Kopírovať link na Google Recenziu</button>
       </div>
     </section>
 
-    <!-- 5. RÝCHLE ODKAZY & NASTAVENIA -->
+    <!-- 5. SYSTÉMY PANEL -->
     <section id="tab-links" class="panel">
       <div class="card">
         <div class="card-title">🔗 Rýchly prístup do administrácie</div>
         <a href="https://admin.welcomio.com" target="_blank" rel="noopener" class="btn btn-amber">⚙️ Welcomio Administrácia (Rezervácie & E-shop) ↗</a>
+        <a href="./poradna.html" target="_blank" rel="noopener" class="btn">🤖 AI Zákaznícka Poradňa Yankee Drive ↗</a>
         <a href="https://www.yankeedrive.sk" target="_blank" rel="noopener" class="btn">🌐 Web www.yankeedrive.sk ↗</a>
         <a href="https://mail.zoho.eu" target="_blank" rel="noopener" class="btn">✉️ Zoho Mail (servis@yankeedrive.sk) ↗</a>
         <a href="https://www.facebook.com/1173144145885321" target="_blank" rel="noopener" class="btn">📘 Facebook – Yankee Drive ↗</a>
         <a href="https://www.instagram.com/yankee_drive/" target="_blank" rel="noopener" class="btn">📸 Instagram – @yankee_drive ↗</a>
         <a href="https://maps.google.com/maps?cid=11842607373418724091" target="_blank" rel="noopener" class="btn">📍 Google Moja Firma – Yankee Drive ↗</a>
       </div>
-
-      <div class="card">
-        <div class="card-title">📲 Ako pridať aplikáciu na plochu mobilu</div>
-        <p style="font-size:13px;color:var(--muted);">
-          • <strong>iPhone (Safari):</strong> Ťuknite dole na tlačidlo <strong>Zdieľať</strong> (štvorček so šípkou) a vyberte <strong>„Pridať na plochu“</strong>.<br>
-          • <strong>Android (Chrome):</strong> Ťuknite vpravo hore na <strong>⋮ (menu)</strong> a vyberte <strong>„Pridať na plochu / Inštalovať aplikáciu“</strong>.
-        </p>
-      </div>
     </section>
   </main>
 
-  <!-- Bottom Tab Navigation -->
   <nav class="bottom-nav">
-    <button class="nav-item active" onclick="openTab('wa', this)">
+    <button class="nav-item active" onclick="openTab('customers', this)">
+      <span class="nav-icon">👥</span>
+      <span>Zákazníci</span>
+    </button>
+    <button class="nav-item" onclick="openTab('wa', this)">
       <span class="nav-icon">💬</span>
       <span>WhatsApp</span>
     </button>
@@ -426,11 +457,7 @@
     </button>
     <button class="nav-item" onclick="openTab('mail', this)">
       <span class="nav-icon">✉️</span>
-      <span>E-maily</span>
-    </button>
-    <button class="nav-item" onclick="openTab('marketing', this)">
-      <span class="nav-icon">⭐</span>
-      <span>Recenzie</span>
+      <span>Maily & SEO</span>
     </button>
     <button class="nav-item" onclick="openTab('links', this)">
       <span class="nav-icon">⚙️</span>
@@ -440,6 +467,201 @@
 
   <script>
     const DEFAULT_PIN = "0750";
+
+    const BASE_CUSTOMERS = [
+      {
+        name: "Miroslav Mišovic",
+        email: "mirik.misovic@gmail.com",
+        phone: "+421 949 052 726",
+        city: "Osobný odber",
+        orders_count: 3,
+        total_spent_eur: 124.20,
+        loyalty_points: 124,
+        last_order_date: "2026-08-20",
+        history: [
+          "2026-08-20: 1x Koch Chemie InsectOff 500ml, 1x Koch Chemie Green Star 1L (20.80 €)",
+          "2026-08-17: 1x Koch Chemie Colourlock Allround Textile Sealant (27.50 €)",
+          "2026-08-14: 1x Koch Chemie profi sada interiér, 1x Sada na čistenie okien (75.90 €)"
+        ]
+      },
+      {
+        name: "Bianka Bučková",
+        email: "zenuchova.bia@gmail.com",
+        phone: "+421 917 975 973",
+        city: "",
+        orders_count: 1,
+        total_spent_eur: 25.00,
+        loyalty_points: 25,
+        last_order_date: "2026-09-09",
+        history: [
+          "2026-09-09: 1x Darčekový poukaz Yankee DriveCard25 (25.00 € - Odoslané)"
+        ]
+      },
+      {
+        name: "Bystrík Grotkovský",
+        email: "grotko1234@gmail.com",
+        phone: "+421 950 482 933",
+        city: "Spišská Belá (Z-BOX SNP 1)",
+        orders_count: 1,
+        total_spent_eur: 23.00,
+        loyalty_points: 23,
+        last_order_date: "2026-09-13",
+        history: [
+          "2026-09-13: 1x Koch Chemie Sada na čistenie okien bez šmúh (23.00 € - Odoslané)"
+        ]
+      }
+    ];
+
+    const BASE_ORDERS = [
+      { type: "E-shop objednávka", number: "969504", date: "2026-09-13", name: "Bystrík Grotkovský", email: "grotko1234@gmail.com", phone: "+421 950 482 933", city: "Spišská Belá", items: "1x Koch Chemie Sada na čistenie okien bez šmúh", total_eur: 23.00, status: "Odoslané" },
+      { type: "E-shop objednávka", number: "369943", date: "2026-09-09", name: "Bianka Bučková", email: "zenuchova.bia@gmail.com", phone: "+421 917 975 973", city: "", items: "1x Yankee DriveCard25", total_eur: 25.00, status: "Odoslané" },
+      { type: "E-shop objednávka", number: "253995", date: "2026-08-20", name: "Miroslav Mišovic", email: "mirik.misovic@gmail.com", phone: "+421 949 052 726", city: "Osobný odber", items: "1x Koch Chemie InsectOff 500ml, 1x Koch Chemie Green Star 1L", total_eur: 20.80, status: "Ukončené" },
+      { type: "E-shop objednávka", number: "685669", date: "2026-08-17", name: "Miroslav Mišovic", email: "mirik.misovic@gmail.com", phone: "+421 949 052 726", city: "Osobný odber", items: "1x Koch Chemie Colourlock Allround Textile Sealant", total_eur: 27.50, status: "Ukončené" },
+      { type: "E-shop objednávka", number: "942757", date: "2026-08-14", name: "Miroslav Mišovic", email: "mirik.misovic@gmail.com", phone: "+421 949 052 726", city: "Osobný odber", items: "1x Koch Chemie profi sada interiér, 1x Sada na čistenie okien", total_eur: 75.90, status: "Ukončené" },
+      { type: "E-shop objednávka", number: "482776", date: "2026-09-14", name: "Bystrík Grotkovský", email: "grotko1234@gmail.com", phone: "+421 950 482 933", city: "Spišská Belá", items: "1x Koch Chemie Sada na čistenie okien bez šmúh", total_eur: 24.40, status: "Zrušené" }
+    ];
+
+    function getCustomers() {
+      const extra = JSON.parse(localStorage.getItem("yd_extra_customers") || "[]");
+      return [...extra, ...BASE_CUSTOMERS];
+    }
+
+    function getOrders() {
+      const extra = JSON.parse(localStorage.getItem("yd_extra_orders") || "[]");
+      return [...extra, ...BASE_ORDERS];
+    }
+
+    function renderCustomers() {
+      const list = getCustomers();
+      const el = document.getElementById("customers-list");
+      el.innerHTML = list.map((c) => {
+        const cleanPhone = (c.phone || "").replace(/[^0-9]/g, "");
+        return `
+          <div class="cust-item">
+            <div class="cust-top">
+              <strong style="font-size:15px;">${c.name}</strong>
+              <span class="badge-pts">⭐ ${c.loyalty_points} bodov (${c.total_spent_eur.toFixed(2)} €)</span>
+            </div>
+            <div style="font-size:12px;color:var(--muted);">
+              📧 ${c.email || "—"} • 📞 ${c.phone || "—"} ${c.city ? "• 📍 " + c.city : ""}
+            </div>
+            <div style="font-size:12px;color:var(--text);margin-top:2px;">
+              ${(c.history || []).map((h) => `<div>• ${h}</div>`).join("")}
+            </div>
+            <div style="display:flex;gap:8px;margin-top:4px;">
+              ${cleanPhone ? `<a href="https://wa.me/${cleanPhone}" target="_blank" class="btn" style="padding:6px 10px;font-size:12px;">💬 WhatsApp</a>` : ""}
+              ${cleanPhone ? `<a href="tel:+${cleanPhone}" class="btn" style="padding:6px 10px;font-size:12px;">📞 Zavolať</a>` : ""}
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function addManualCustomer() {
+      const name = document.getElementById("nc-name").value.trim();
+      const phone = document.getElementById("nc-phone").value.trim();
+      const email = document.getElementById("nc-email").value.trim();
+      const price = parseFloat(document.getElementById("nc-price").value || "0");
+      const service = document.getElementById("nc-service").value.trim() || "Detailing / Čistenie";
+      if (!name) {
+        toast("Zadajte meno zákazníka.");
+        return;
+      }
+      const today = new Date().toISOString().slice(0, 10);
+      const extraCust = JSON.parse(localStorage.getItem("yd_extra_customers") || "[]");
+      extraCust.unshift({
+        name,
+        email,
+        phone,
+        city: "Prevádzka / Door-to-Door",
+        orders_count: 1,
+        total_spent_eur: price,
+        loyalty_points: Math.round(price),
+        last_order_date: today,
+        history: [`${today}: ${service} (${price.toFixed(2)} € - Dokončené)`]
+      });
+      localStorage.setItem("yd_extra_customers", JSON.stringify(extraCust));
+
+      const extraOrd = JSON.parse(localStorage.getItem("yd_extra_orders") || "[]");
+      extraOrd.unshift({
+        type: "Čistenie / Služba",
+        number: "YD-" + Math.floor(1000 + Math.random() * 9000),
+        date: today,
+        name,
+        email,
+        phone,
+        city: "Trebišov",
+        items: service,
+        total_eur: price,
+        status: "Dokončené"
+      });
+      localStorage.setItem("yd_extra_orders", JSON.stringify(extraOrd));
+
+      document.getElementById("nc-name").value = "";
+      document.getElementById("nc-phone").value = "";
+      document.getElementById("nc-email").value = "";
+      document.getElementById("nc-price").value = "";
+      document.getElementById("nc-service").value = "";
+      renderCustomers();
+      toast("✅ Zákazník bol pridaný do tabuľky!");
+    }
+
+    function triggerCsvDownload(filename, rows) {
+      const csvContent = "\uFEFF" + rows.map((r) =>
+        r.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(";")
+      ).join("\r\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast("📥 Súbor " + filename + " bol stiahnutý do PC!");
+    }
+
+    function downloadCustomersCsv() {
+      const rows = [
+        ["Meno a priezvisko", "E-mail", "Telefón", "Mesto / Odber", "Počet objednávok", "Celková útrata (EUR)", "Vernostné body", "Posledná objednávka", "História nákupov a čistenia"]
+      ];
+      getCustomers().forEach((c) => {
+        rows.push([
+          c.name,
+          c.email,
+          c.phone,
+          c.city,
+          c.orders_count,
+          c.total_spent_eur.toFixed(2).replace(".", ","),
+          c.loyalty_points,
+          c.last_order_date,
+          (c.history || []).join(" | ")
+        ]);
+      });
+      triggerCsvDownload("yankee_drive_zakaznici.csv", rows);
+    }
+
+    function downloadOrdersCsv() {
+      const rows = [
+        ["Typ", "Číslo", "Dátum", "Meno zákazníka", "E-mail", "Telefón", "Mesto", "Služba / Produkty", "Suma (EUR)", "Stav"]
+      ];
+      getOrders().forEach((o) => {
+        rows.push([
+          o.type,
+          o.number,
+          o.date,
+          o.name,
+          o.email,
+          o.phone,
+          o.city,
+          o.items,
+          o.total_eur.toFixed(2).replace(".", ","),
+          o.status
+        ]);
+      });
+      triggerCsvDownload("yankee_drive_objednavky.csv", rows);
+    }
 
     function checkUnlocked() {
       if (localStorage.getItem("yd_unlocked") === "1") {
@@ -493,7 +715,6 @@
       toast("✅ Skopírované do schránky!");
     }
 
-    /* WhatsApp Templates */
     function setWaTpl(type, btn) {
       btn.parentElement.querySelectorAll(".chip-btn").forEach((b) => b.classList.remove("selected"));
       btn.classList.add("selected");
@@ -517,7 +738,6 @@
       window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
     }
 
-    /* Calculator */
     let selectedPkg = { name: "Yankee Refresh", price: 45 };
     function selectPkg(btn) {
       document.querySelectorAll("#calc-packages .chip-btn").forEach((b) => b.classList.remove("selected"));
@@ -546,7 +766,6 @@
       window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
     }
 
-    /* Mail */
     function setMailTpl(type, btn) {
       if (btn) {
         btn.parentElement.querySelectorAll(".chip-btn").forEach((b) => b.classList.remove("selected"));
@@ -568,7 +787,6 @@
       window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
     }
 
-    /* Reviews */
     function updateReviewText() {
       const name = document.getElementById("rev-customer").value.trim() || "zákazník";
       const srv = document.getElementById("rev-service").value;
@@ -581,6 +799,7 @@
     }
 
     checkUnlocked();
+    renderCustomers();
     updateCalc();
     setMailTpl("refresh");
     updateReviewText();

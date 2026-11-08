@@ -1,4 +1,4 @@
-name: Yankee Drive – Denný Report (20:00 SK)
+name: Yankee Drive – Denný Report & Synchronizácia Tabuľky Zákazníkov (20:00 SK)
 
 on:
   schedule:
@@ -6,6 +6,9 @@ on:
     - cron: '0 18 * * *'
     - cron: '0 19 * * *'
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   send-daily-report:
@@ -19,7 +22,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Generate and Send Daily Report at 20:00 Europe/Bratislava
+      - name: Synchronize Customers CSV & Send Daily Report at 20:00 Europe/Bratislava
         env:
           EVENT_NAME: ${{ github.event_name }}
           ZOHO_EMAIL: ${{ secrets.ZOHO_EMAIL }}
@@ -53,6 +56,17 @@ jobs:
               print("Preskakujem beh (iný posun letného/zimného času, čakám na 20:00 Europe/Bratislava).")
               sys.exit(0)
 
+          # 1. Aktualizácia Excel/CSV tabuľky zákazníkov a objednávok z Welcomio
+          subprocess.run(["python3", "tools/export_customers.py", "--output-dir", "."])
+
+          # 2. Odoslanie denného reportu na servis@yankeedrive.sk
           res = subprocess.run(["python3", "tools/yankee_briefing.py", "--send-email", "--to", "servis@yankeedrive.sk"])
           sys.exit(res.returncode)
           EOF
+
+      - name: Commit updated customer & order CSV spreadsheets
+        run: |
+          git config user.name "Yankee Drive AI Bot"
+          git config user.email "servis@yankeedrive.sk"
+          git add yankee_drive_zakaznici.csv yankee_drive_objednavky.csv customers_data.json || true
+          git diff --staged --quiet || (git commit -m "Auto-update: Tabuľka zákazníkov a objednávok" && git push)
