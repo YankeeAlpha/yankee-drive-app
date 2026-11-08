@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0c0d10" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Yankee Drive" />
+  <title>Yankee Drive – Mobilný Asistent</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+  <link rel="apple-touch-icon" href="./icon.svg" />
+  <style>
+    :root {
+      --bg: #0c0d10;
+      --card: #151820;
+      --elevated: #1e222d;
+      --border: #2a2f3d;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --amber: #f59e0b;
+      --amber-soft: rgba(245, 158, 11, 0.15);
+      --green: #10b981;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      padding-bottom: 84px;
+      line-height: 1.45;
+    }
+    /* PIN Screen */
+    #pin-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
+    #pin-overlay.hidden { display: none; }
+    .pin-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px 24px;
+      width: 100%;
+      max-width: 360px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .logo-badge {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      background: var(--amber);
+      color: #0c0d10;
+      font-weight: 900;
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto;
+    }
+    .pin-input {
+      background: var(--bg);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      color: var(--amber);
+      font-size: 24px;
+      font-weight: 800;
+      text-align: center;
+      letter-spacing: 10px;
+      width: 100%;
+    }
+    .pin-input:focus { outline: none; border-color: var(--amber); }
+
+    /* Topbar */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(21, 24, 32, 0.92);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 10px; }
+    .mini-logo {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--amber); color: #0c0d10;
+      font-weight: 900; font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .container {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .panel { display: none; flex-direction: column; gap: 14px; }
+    .panel.active { display: flex; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .card-title { font-size: 16px; font-weight: 700; }
+    .card-sub { font-size: 12px; color: var(--muted); }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .stat-box {
+      background: var(--elevated);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .stat-label { font-size: 12px; color: var(--muted); }
+    .stat-val { font-size: 18px; font-weight: 800; margin-top: 2px; color: var(--text); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--elevated);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      text-align: center;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-amber {
+      background: var(--amber);
+      color: #0c0d10;
+      border-color: var(--amber);
+      font-weight: 700;
+    }
+    .chip-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .chip-btn {
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--elevated);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 600;
+      text-align: left;
+      cursor: pointer;
+    }
+    .chip-btn.selected {
+      border-color: var(--amber);
+      background: var(--amber-soft);
+      color: var(--amber);
+    }
+
+    .input, .textarea, .select {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 12px;
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .textarea { min-height: 125px; resize: vertical; }
+
+    /* Bottom Navigation */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: rgba(21, 24, 32, 0.96);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      padding: 6px 4px env(safe-area-inset-bottom, 8px);
+      z-index: 100;
+    }
+    .nav-item {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      padding: 6px 2px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .nav-item.active { color: var(--amber); }
+    .nav-icon { font-size: 18px; }
+
+    .toast {
+      position: fixed;
+      top: 72px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--amber);
+      color: #0c0d10;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 10px 18px;
+      border-radius: 999px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      z-index: 200;
+      display: none;
+      white-space: nowrap;
+    }
+    .toast.show { display: block; }
+  </style>
+</head>
+<body>
+
+  <!-- PIN Lock Screen -->
+  <div id="pin-overlay">
+    <div class="pin-card">
+      <div class="logo-badge">YD</div>
+      <div>
+        <h2 style="font-size:18px;font-weight:800;">Yankee Drive Interný</h2>
+        <p style="font-size:13px;color:var(--muted);margin-top:4px;">Zadajte firemný PIN kód pre odomknutie aplikácie</p>
+      </div>
+      <input id="pin-field" type="password" inputmode="numeric" maxlength="6" class="pin-input" placeholder="••••" oninput="checkPinInput()" />
+      <button class="btn btn-amber" onclick="unlockWithPin()">Odomknúť aplikáciu</button>
+      <p id="pin-err" style="font-size:12px;color:#ef4444;display:none;">Nesprávny PIN kód. Skúste znova.</p>
+    </div>
+  </div>
+
+  <!-- Top Header -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="mini-logo">YD</div>
+      <div>
+        <div style="font-size:15px;font-weight:800;">Yankee Drive</div>
+        <div style="font-size:12px;color:var(--muted);">Mobilný Firemný Asistent</div>
+      </div>
+    </div>
+    <button class="btn" style="padding:7px 11px;font-size:12px;" onclick="lockApp()">🔒 Zamknúť</button>
+  </header>
+
+  <div id="toast" class="toast"></div>
+
+  <main class="container">
+    <!-- 1. WHATSAPP PANEL (Default on Mobile for fast customer communication) -->
+    <section id="tab-wa" class="panel active">
+      <div class="card">
+        <div>
+          <div class="card-title">💬 Rýchla WhatsApp správa zákazníkovi</div>
+          <div class="card-sub">Vyberte situáciu, zadajte číslo zákazníka a jedným ťuknutím odošlite správu</div>
+        </div>
+
+        <input id="wa-phone" type="tel" class="input" placeholder="Telefón zákazníka (napr. 0905 123 456)" />
+
+        <div class="chip-grid">
+          <button class="chip-btn selected" onclick="setWaTpl('ready', this)">🚗 Auto je hotové</button>
+          <button class="chip-btn" onclick="setWaTpl('confirm', this)">📅 Potvrdenie termínu</button>
+          <button class="chip-btn" onclick="setWaTpl('review', this)">⭐ Prosba o recenziu</button>
+          <button class="chip-btn" onclick="setWaTpl('pickup', this)">🔑 Vyzdvihnutie auta</button>
+        </div>
+
+        <textarea id="wa-msg" class="textarea">Dobrý deň, tu je Yankee Drive Trebišov. Vaše vozidlo je kompletne vyčistené, vyleštené a pripravené na odovzdanie. 🚗✨ V prípade otázok sme Vám k dispozícii na +421 940 247 133.</textarea>
+
+        <button class="btn btn-amber" onclick="openWhatsApp()">💬 Otvoriť a odoslať cez WhatsApp ↗</button>
+        <button class="btn" onclick="copyById('wa-msg')">📋 Kopírovať text správy</button>
+      </div>
+    </section>
+
+    <!-- 2. KALKULAČKA & CENNÍK PANEL -->
+    <section id="tab-calc" class="panel">
+      <div class="card">
+        <div>
+          <div class="card-title">🧮 Rýchla kalkulačka pri obhliadke auta</div>
+          <div class="card-sub">Naklikajte služby a odošlite cenovú ponuku zákazníkovi na WhatsApp alebo e-mail</div>
+        </div>
+
+        <div style="font-size:12px;font-weight:700;color:var(--muted);">1. Hlavný balíček:</div>
+        <div class="chip-grid" id="calc-packages">
+          <button class="chip-btn selected" data-name="Yankee Refresh" data-price="45" onclick="selectPkg(this)">✨ Refresh (45 €)</button>
+          <button class="chip-btn" data-name="Yankee Štandard" data-price="80" onclick="selectPkg(this)">🧼 Štandard (80 €)</button>
+          <button class="chip-btn" data-name="Yankee Exclusive" data-price="200" onclick="selectPkg(this)">💎 Exclusive (200 €)</button>
+          <button class="chip-btn" data-name="Len čiastkové služby" data-price="0" onclick="selectPkg(this)">🔧 Bez balíčka (0 €)</button>
+        </div>
+
+        <div style="font-size:12px;font-weight:700;color:var(--muted);">2. Doplnkové služby:</div>
+        <div class="chip-grid" id="calc-extras">
+          <button class="chip-btn" data-name="Hĺbkové tepovanie (50 €)" data-price="50" onclick="toggleExtra(this)">🛋️ Tepovanie (+50 €)</button>
+          <button class="chip-btn" data-name="Ozónová dezinfekcia (30 €)" data-price="30" onclick="toggleExtra(this)">🌬️ Ozón O3 (+30 €)</button>
+          <button class="chip-btn" data-name="Tekuté stierače (15 €)" data-price="15" onclick="toggleExtra(this)">🌧️ Tekuté stierače (+15 €)</button>
+          <button class="chip-btn" data-name="Vysávanie auta (15 €)" data-price="15" onclick="toggleExtra(this)">🧹 Vysávanie (+15 €)</button>
+          <button class="chip-btn" data-name="Čistenie okien (10 €)" data-price="10" onclick="toggleExtra(this)">🪟 Okná (+10 €)</button>
+          <button class="chip-btn" data-name="Gumené rohože (7 €)" data-price="7" onclick="toggleExtra(this)">🧽 Rohože (+7 €)</button>
+        </div>
+
+        <div class="stat-box" style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:14px;font-weight:700;">Odhadovaná cena spolu:</span>
+          <span id="calc-total" style="font-size:22px;font-weight:900;color:var(--amber);">45 €</span>
+        </div>
+
+        <textarea id="calc-summary" class="textarea" style="min-height:110px;"></textarea>
+
+        <div class="grid-2">
+          <button class="btn btn-amber" onclick="sendCalcToWa()">💬 Poslať na WhatsApp</button>
+          <button class="btn" onclick="copyById('calc-summary')">📋 Kopírovať ponuku</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. E-MAILY PANEL -->
+    <section id="tab-mail" class="panel">
+      <div class="card">
+        <div>
+          <div class="card-title">✉️ Generátor e-mailovej odpovede</div>
+          <div class="card-sub">Pripraví profesionálnu odpoveď a otvorí ju priamo vo vašej mailovej aplikácii alebo skopíruje</div>
+        </div>
+
+        <div class="chip-grid">
+          <button class="chip-btn selected" onclick="setMailTpl('refresh', this)">✨ Yankee Refresh (45 €)</button>
+          <button class="chip-btn" onclick="setMailTpl('standard', this)">🧼 Yankee Štandard (80 €)</button>
+          <button class="chip-btn" onclick="setMailTpl('exclusive', this)">💎 Yankee Exclusive (200 €)</button>
+          <button class="chip-btn" onclick="setMailTpl('tepovanie', this)">🛋️ Tepovanie & Ozón</button>
+        </div>
+
+        <input id="m-to" type="email" class="input" placeholder="E-mail zákazníka (voliteľné)" />
+        <input id="m-subj" type="text" class="input" value="Cenová ponuka a rezervácia termínu – Yankee Drive" />
+        <textarea id="m-body" class="textarea"></textarea>
+
+        <div class="grid-2">
+          <button class="btn btn-amber" onclick="openMailApp()">✉️ Otvoriť v Mail apke</button>
+          <button class="btn" onclick="copyById('m-body')">📋 Kopírovať text</button>
+        </div>
+        <a href="https://mail.zoho.eu" target="_blank" rel="noopener" class="btn">📬 Otvoriť Zoho Mail v prehliadači ↗</a>
+      </div>
+    </section>
+
+    <!-- 4. GOOGLE RECENZIE & FB/IG PANEL -->
+    <section id="tab-marketing" class="panel">
+      <div class="card">
+        <div>
+          <div class="card-title">⭐ Odpoveď na Google Recenziu (Lokálne SEO)</div>
+          <div class="card-sub">Obsahuje kľúčové slová: autodetailing Trebišov, ručné umývanie áut, tepovanie</div>
+        </div>
+
+        <input id="rev-customer" type="text" class="input" placeholder="Meno zákazníka (napr. Peter)" oninput="updateReviewText()" />
+        <select id="rev-service" class="select" onchange="updateReviewText()">
+          <option value="refresh">Ručné umývanie & Yankee Refresh</option>
+          <option value="standard">Hĺbkové tepovanie & Yankee Štandard</option>
+          <option value="exclusive">Strojové leštenie laku & Yankee Exclusive</option>
+        </select>
+
+        <textarea id="rev-text" class="textarea" style="min-height:110px;"></textarea>
+        <button class="btn btn-amber" onclick="copyById('rev-text')">📋 Kopírovať odpoveď na recenziu</button>
+      </div>
+
+      <div class="card">
+        <div>
+          <div class="card-title">📲 Priamy link pre zákazníka na Google Recenziu</div>
+          <div class="card-sub">Pošlite spokojnému zákazníkovi po odovzdaní vozidla</div>
+        </div>
+        <input id="rev-link" type="text" class="input" readonly value="https://search.google.com/local/writereview?placeid=ChIJ7717ljXVPkcR-3oLS6lkWaQ" />
+        <button class="btn" onclick="copyById('rev-link')">📋 Kopírovať link na Google Recenziu</button>
+      </div>
+    </section>
+
+    <!-- 5. RÝCHLE ODKAZY & NASTAVENIA -->
+    <section id="tab-links" class="panel">
+      <div class="card">
+        <div class="card-title">🔗 Rýchly prístup do administrácie</div>
+        <a href="https://admin.welcomio.com" target="_blank" rel="noopener" class="btn btn-amber">⚙️ Welcomio Administrácia (Rezervácie & E-shop) ↗</a>
+        <a href="https://www.yankeedrive.sk" target="_blank" rel="noopener" class="btn">🌐 Web www.yankeedrive.sk ↗</a>
+        <a href="https://mail.zoho.eu" target="_blank" rel="noopener" class="btn">✉️ Zoho Mail (servis@yankeedrive.sk) ↗</a>
+        <a href="https://www.facebook.com/1173144145885321" target="_blank" rel="noopener" class="btn">📘 Facebook – Yankee Drive ↗</a>
+        <a href="https://www.instagram.com/yankee_drive/" target="_blank" rel="noopener" class="btn">📸 Instagram – @yankee_drive ↗</a>
+        <a href="https://maps.google.com/maps?cid=11842607373418724091" target="_blank" rel="noopener" class="btn">📍 Google Moja Firma – Yankee Drive ↗</a>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📲 Ako pridať aplikáciu na plochu mobilu</div>
+        <p style="font-size:13px;color:var(--muted);">
+          • <strong>iPhone (Safari):</strong> Ťuknite dole na tlačidlo <strong>Zdieľať</strong> (štvorček so šípkou) a vyberte <strong>„Pridať na plochu“</strong>.<br>
+          • <strong>Android (Chrome):</strong> Ťuknite vpravo hore na <strong>⋮ (menu)</strong> a vyberte <strong>„Pridať na plochu / Inštalovať aplikáciu“</strong>.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Bottom Tab Navigation -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" onclick="openTab('wa', this)">
+      <span class="nav-icon">💬</span>
+      <span>WhatsApp</span>
+    </button>
+    <button class="nav-item" onclick="openTab('calc', this)">
+      <span class="nav-icon">🧮</span>
+      <span>Kalkulačka</span>
+    </button>
+    <button class="nav-item" onclick="openTab('mail', this)">
+      <span class="nav-icon">✉️</span>
+      <span>E-maily</span>
+    </button>
+    <button class="nav-item" onclick="openTab('marketing', this)">
+      <span class="nav-icon">⭐</span>
+      <span>Recenzie</span>
+    </button>
+    <button class="nav-item" onclick="openTab('links', this)">
+      <span class="nav-icon">⚙️</span>
+      <span>Systémy</span>
+    </button>
+  </nav>
+
+  <script>
+    const DEFAULT_PIN = "0750";
+
+    function checkUnlocked() {
+      if (localStorage.getItem("yd_unlocked") === "1") {
+        document.getElementById("pin-overlay").classList.add("hidden");
+      }
+    }
+
+    function checkPinInput() {
+      const val = document.getElementById("pin-field").value;
+      if (val === (localStorage.getItem("yd_custom_pin") || DEFAULT_PIN)) {
+        unlockWithPin();
+      }
+    }
+
+    function unlockWithPin() {
+      const val = document.getElementById("pin-field").value;
+      const expected = localStorage.getItem("yd_custom_pin") || DEFAULT_PIN;
+      if (val === expected) {
+        localStorage.setItem("yd_unlocked", "1");
+        document.getElementById("pin-overlay").classList.add("hidden");
+        document.getElementById("pin-err").style.display = "none";
+      } else {
+        document.getElementById("pin-err").style.display = "block";
+      }
+    }
+
+    function lockApp() {
+      localStorage.removeItem("yd_unlocked");
+      document.getElementById("pin-field").value = "";
+      document.getElementById("pin-overlay").classList.remove("hidden");
+    }
+
+    function toast(msg) {
+      const t = document.getElementById("toast");
+      t.textContent = msg;
+      t.classList.add("show");
+      clearTimeout(window._tt);
+      window._tt = setTimeout(() => t.classList.remove("show"), 2600);
+    }
+
+    function openTab(id, btn) {
+      document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
+      document.getElementById("tab-" + id).classList.add("active");
+      document.querySelectorAll(".nav-item").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+    }
+
+    function copyById(id) {
+      const el = document.getElementById(id);
+      navigator.clipboard.writeText(el.value);
+      toast("✅ Skopírované do schránky!");
+    }
+
+    /* WhatsApp Templates */
+    function setWaTpl(type, btn) {
+      btn.parentElement.querySelectorAll(".chip-btn").forEach((b) => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      const map = {
+        ready: "Dobrý deň, tu je Yankee Drive Trebišov. Vaše vozidlo je kompletne vyčistené, vyleštené a pripravené na odovzdanie. 🚗✨ V prípade otázok sme Vám k dispozícii na +421 940 247 133.",
+        confirm: "Dobrý deň, potvrdzujeme Vašu rezerváciu v Yankee Drive (Milhostov 190, Trebišov). 🚗 Tešíme sa na Vás! Ak využijete službu vyzdvihnutia vozidla, dajte nám prosím vedieť adresu. Tel: +421 940 247 133 | www.yankeedrive.sk",
+        review: "Dobrý deň, ďakujeme, že ste si vybrali Yankee Drive! 🚗✨ Ak ste boli s čistotou Vášho auta spokojný, veľmi nás poteší Vaše krátke hodnotenie na Google: https://search.google.com/local/writereview?placeid=ChIJ7717ljXVPkcR-3oLS6lkWaQ Ďakujeme!",
+        pickup: "Dobrý deň, tu je Yankee Drive. Sme na ceste k Vám pre vyzdvihnutie vozidla na čistenie. 🚗🔑 Po dokončení programu Vám auto privezieme späť čisté a pripravené na jazdu."
+      };
+      document.getElementById("wa-msg").value = map[type] || map.ready;
+    }
+
+    function openWhatsApp() {
+      let phone = document.getElementById("wa-phone").value.replace(/[^0-9]/g, "");
+      if (phone.startsWith("09")) phone = "421" + phone.slice(1);
+      const msg = document.getElementById("wa-msg").value.trim();
+      if (!phone) {
+        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
+        return;
+      }
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
+    }
+
+    /* Calculator */
+    let selectedPkg = { name: "Yankee Refresh", price: 45 };
+    function selectPkg(btn) {
+      document.querySelectorAll("#calc-packages .chip-btn").forEach((b) => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      selectedPkg = { name: btn.dataset.name, price: Number(btn.dataset.price) };
+      updateCalc();
+    }
+    function toggleExtra(btn) {
+      btn.classList.toggle("selected");
+      updateCalc();
+    }
+    function updateCalc() {
+      let total = selectedPkg.price;
+      const items = [];
+      if (selectedPkg.price > 0) items.push(`• Balíček ${selectedPkg.name}: od ${selectedPkg.price} €`);
+      document.querySelectorAll("#calc-extras .chip-btn.selected").forEach((b) => {
+        total += Number(b.dataset.price);
+        items.push(`• ${b.dataset.name}`);
+      });
+      document.getElementById("calc-total").textContent = `${total} €`;
+      document.getElementById("calc-summary").value =
+        `Dobrý deň, posielame Vám orientačnú kalkuláciu starostlivosti o vozidlo v Yankee Drive Trebišov:\n\n${items.join("\n")}\n\n💰 Odhadovaná cena spolu: cca ${total} €\n🚗 Zahŕňa možnosť vyzdvihnutia a vrátenia vozidla.\n📅 Online rezervácia: https://www.yankeedrive.sk | 📞 +421 940 247 133`;
+    }
+    function sendCalcToWa() {
+      const msg = document.getElementById("calc-summary").value;
+      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
+    }
+
+    /* Mail */
+    function setMailTpl(type, btn) {
+      if (btn) {
+        btn.parentElement.querySelectorAll(".chip-btn").forEach((b) => b.classList.remove("selected"));
+        btn.classList.add("selected");
+      }
+      const map = {
+        refresh: "Dobrý deň,\n\nďakujeme za Váš záujem o služby Yankee Drive v Trebišove (Milhostov 190).\nPre rýchle a dôkladné osvieženie vozidla odporúčame balíček Yankee Refresh (od 45 €) – 3-fázové ručné umývanie, čistenie diskov, hydrofóbny sealant, vysávanie a okná.\n\nVozidlo Vám radi vyzdvihneme priamo na Vašej adrese a po vyčistení privezieme späť.\n\nRezervácie: www.yankeedrive.sk alebo +421 940 247 133.\n\nS pozdravom,\nTím Yankee Drive",
+        standard: "Dobrý deň,\n\nďakujeme za Váš dopyt v Yankee Drive.\nPre hĺbkovú očistu odporúčame náš sezónny balíček Yankee Štandard (od 80 €) – ručné umývanie, dekontaminácia laku, vosk, hĺbkové tepovanie sedadiel (alebo čistenie a impregnáciu kože) a ošetrenie plastov s UV filtrom.\n\nRezervácie: www.yankeedrive.sk alebo +421 940 247 133.\n\nS pozdravom,\nTím Yankee Drive",
+        exclusive: "Dobrý deň,\n\nďakujeme za Váš záujem o prémiový autodetailing v Yankee Drive.\nOdporúčame balíček Yankee Exclusive (od 200 €, 1–3 dni) – jednostupňové strojové leštenie laku, prémiový sealant, tekuté stierače, ochrana diskov, hĺbkové tepovanie a dezinfekcia ozónom.\n\nRezervácie: www.yankeedrive.sk alebo +421 940 247 133.\n\nS pozdravom,\nTím Yankee Drive",
+        tepovanie: "Dobrý deň,\n\nďakujeme za kontaktovanie Yankee Drive.\n• Hĺbkové tepovanie vozidla (sedačky + kufor): 50 €\n• Ozónové čistenie interiéru a klimatizácie: 30 €\n• Tepovanie domácností (sedačky, koberce): od 20 € do 90 €\n\nRezervácie: www.yankeedrive.sk alebo +421 940 247 133.\n\nS pozdravom,\nTím Yankee Drive"
+      };
+      document.getElementById("m-body").value = map[type] || map.refresh;
+    }
+
+    function openMailApp() {
+      const to = document.getElementById("m-to").value.trim();
+      const subj = document.getElementById("m-subj").value.trim();
+      const body = document.getElementById("m-body").value.trim();
+      window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
+    }
+
+    /* Reviews */
+    function updateReviewText() {
+      const name = document.getElementById("rev-customer").value.trim() || "zákazník";
+      const srv = document.getElementById("rev-service").value;
+      const map = {
+        refresh: `Ďakujeme veľmi pekne za skvelé hodnotenie, ${name}! Teší nás, že ste boli spokojný s naším ručným umývaním áut a balíčkom Yankee Refresh. V Yankee Drive Trebišov (Milhostov) si dávame záležať na každom detaile. Budeme sa tešiť na Vašu ďalšiu návštevu – online rezervácie na www.yankeedrive.sk alebo +421 940 247 133!`,
+        standard: `Srdečne ďakujeme za Vašu recenziu, ${name}! Sme radi, že hĺbkové tepovanie a kompletné čistenie interiéru aj exteriéru v Yankee Drive splnilo Vaše očakávania. Profesionálny autodetailing v Trebišove robíme s vášňou pre čisté autá. Tešíme sa na Vás opäť!`,
+        exclusive: `Veľká vďaka za dôveru a parádne hodnotenie, ${name}! Strojové leštenie laku a prémiový autodetailing v balíčku Yankee Exclusive patrí medzi našu srdcovku. Sme hrdí, že Vaše auto opäť žiari ako nové. Kedykoľvek budete potrebovať starostlivosť o vozidlo v Trebišove, sme tu pre Vás na www.yankeedrive.sk alebo +421 940 247 133!`
+      };
+      document.getElementById("rev-text").value = map[srv] || map.refresh;
+    }
+
+    checkUnlocked();
+    updateCalc();
+    setMailTpl("refresh");
+    updateReviewText();
+  </script>
+</body>
+</html>
