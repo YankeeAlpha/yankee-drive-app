@@ -1,20 +1,25 @@
 #!/usr/bin/env python3
 """
 Yankee Drive - Export zákazníkov, objednávok z e-shopu a online rezervácií čistenia do Excel/CSV tabuľky
++ Obojsmerná synchronizácia s Firebase Firestore databázou Vernostného Klubu (yankee-drive-loyality-card).
 Generuje:
 1. yankee_drive_zakaznici.csv (Unikátni zákazníci + celková útrata + vernostné body 1 € = 1 bod)
 2. yankee_drive_objednavky.csv (Všetky objednávky z e-shopu a rezervácie čistenia)
-3. customers_data.json (Pre zobrazenie a 1-klikové stiahnutie do Excelu v internej aplikácii)
+3. customers_data.json (Pre zobrazenie a 1-klikové stiahnutie do Excelu v internej aplikácii a vernostnom klube)
 """
 
+import argparse
 import csv
 import json
 from pathlib import Path
 import sys
+import urllib.parse
+import urllib.request
 
 TOOLS_DIR = Path(__file__).resolve().parent
 BASE_DIR = TOOLS_DIR.parent
-EXPORT_DIR = BASE_DIR / "exports"
+DEFAULT_EXPORT_DIR = BASE_DIR / "exports"
+FIRESTORE_BASE = "https://firestore.googleapis.com/v1/projects/yankee-drive-loyality-card/databases/(default)/documents"
 
 sys.path.insert(0, str(TOOLS_DIR))
 import welcomio_admin  # noqa: E402
@@ -39,7 +44,7 @@ def fetch_all_records():
             first_name = (addr.get("first_name") or "").strip()
             last_name = (addr.get("last_name") or "").strip()
             full_name = f"{first_name} {last_name}".strip() or "Neznámy zákazník"
-            email = (cust.get("email") or "").strip()
+            email = (cust.get("email") or "").strip().lower()
             phone = (addr.get("phone") or "").strip()
             if phone and not phone.startswith("+") and phone.startswith("9"):
                 phone = "+421 " + phone
@@ -69,7 +74,7 @@ def fetch_all_records():
                 "shipping": o.get("shipping_method_name") or "",
             })
 
-            key = email.lower() if email else full_name.lower()
+            key = email if email else full_name.lower()
             if key not in customers_map:
                 customers_map[key] = {
                     "name": full_name,
@@ -107,7 +112,7 @@ def fetch_all_records():
                 continue
             seen_res_ids.add(rid)
             c_name = (r.get("customer_name") or r.get("name") or "Zákazník rezervácie").strip()
-            c_email = (r.get("customer_email") or r.get("email") or "").strip()
+            c_email = (r.get("customer_email") or r.get("email") or "").strip().lower()
             c_phone = (r.get("customer_phone") or r.get("phone") or "").strip()
             srv_name = (r.get("service_name") or (r.get("service") or {}).get("name") or "Detailing / Čistenie").strip()
             price_eur = round((r.get("price") or 0) / 100.0, 2)
@@ -130,7 +135,7 @@ def fetch_all_records():
                 "shipping": "Osobný odber / Door-to-Door",
             })
 
-            key = c_email.lower() if c_email else c_name.lower()
+            key = c_email if c_email else c_name.lower()
             if key not in customers_map:
                 customers_map[key] = {
                     "name": c_name,
@@ -155,12 +160,68 @@ def fetch_all_records():
     return customers, records
 
 
-def export_all():
-    EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+def sync_to_firestore(customers):
+    """Synchronizes Welcomio customers to Firebase Firestore collection 'customers'."""
+    synced = 0
+    for c in customers:
+        email = (c.get("email") or "").strip().lower()
+        if not email:
+            continue
+        doc_url = f"{FIRESTORE_BASE}/customers/{urllib.parse.quote(email, safe='@.')}"
+        existing_fields = {}
+        try:
+            req = urllib.request.Request(doc_url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=8) as r:
+                existing_doc = json.loads(r.read().decode("utf-8", errors="ignore"))
+                existing_fields = existing_doc.get("fields", {})
+        except Exception:
+            existing_fields = {}
+
+        bonus_points = int((existing_fields.get("bonusPoints") or {}).get("integerValue", 0))
+        redeemed_points = int((existing_fields.get("redeemedPoints") or {}).get("integerValue", 0))
+        welcomio_points = int(c["loyalty_points"])
+        final_points = max(0, welcomio_points + bonus_points - redeemed_points)
+
+        body = {
+            "fields": {
+                "email": {"stringValue": email},
+                "name": {"stringValue": c["name"]},
+                "phone": {"stringValue": c["phone"] or ""},
+                "city": {"stringValue": c["city"] or ""},
+                "address": {"stringValue": c["address"] or ""},
+                "ordersCount": {"integerValue": str(c["orders_count"])},
+                "totalSpentEur": {"doubleValue": float(c["total_spent_eur"])},
+                "welcomioPoints": {"integerValue": str(welcomio_points)},
+                "bonusPoints": {"integerValue": str(bonus_points)},
+                "redeemedPoints": {"integerValue": str(redeemed_points)},
+                "points": {"integerValue": str(final_points)},
+                "lastOrderDate": {"stringValue": c["last_order_date"] or ""},
+                "historyText": {"stringValue": " | ".join(c["history"])},
+            }
+        }
+        try:
+            data = json.dumps(body).encode("utf-8")
+            req = urllib.request.Request(
+                doc_url,
+                data=data,
+                headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"},
+                method="PATCH",
+            )
+            with urllib.request.urlopen(req, timeout=10) as _:
+                synced += 1
+        except Exception as e:
+            print(f"Firestore sync warning for {email}: {e}", file=sys.stderr)
+    return synced
+
+
+def export_all(output_dir=None):
+    export_dir = Path(output_dir).resolve() if output_dir else DEFAULT_EXPORT_DIR
+    export_dir.mkdir(parents=True, exist_ok=True)
     customers, records = fetch_all_records()
+    firestore_synced = sync_to_firestore(customers)
 
     # 1. Write yankee_drive_zakaznici.csv (UTF-8 with BOM + ';' delimiter for Slovak Excel)
-    cust_csv = EXPORT_DIR / "yankee_drive_zakaznici.csv"
+    cust_csv = export_dir / "yankee_drive_zakaznici.csv"
     with cust_csv.open("w", encoding="utf-8-sig", newline="") as f:
         writer = csv.writer(f, delimiter=";")
         writer.writerow([
@@ -190,7 +251,7 @@ def export_all():
             ])
 
     # 2. Write yankee_drive_objednavky.csv
-    ord_csv = EXPORT_DIR / "yankee_drive_objednavky.csv"
+    ord_csv = export_dir / "yankee_drive_objednavky.csv"
     with ord_csv.open("w", encoding="utf-8-sig", newline="") as f:
         writer = csv.writer(f, delimiter=";")
         writer.writerow([
@@ -226,11 +287,12 @@ def export_all():
             ])
 
     # 3. Write JSON summary
-    json_path = EXPORT_DIR / "customers_data.json"
+    json_path = export_dir / "customers_data.json"
     payload = {
         "ok": True,
         "customers_count": len(customers),
         "records_count": len(records),
+        "firestore_synced": firestore_synced,
         "customers": customers,
         "records": records,
         "files": {
@@ -243,5 +305,8 @@ def export_all():
 
 
 if __name__ == "__main__":
-    out = export_all()
+    parser = argparse.ArgumentParser(description="Yankee Drive - Export zákazníkov do Excel/CSV a Firebase")
+    parser.add_argument("--output-dir", default=None, help="Cieľový priečinok pre CSV a JSON súbory")
+    args = parser.parse_args()
+    out = export_all(args.output_dir)
     print(json.dumps(out, indent=2, ensure_ascii=False))

@@ -2,6 +2,7 @@
   "ok": true,
   "customers_count": 3,
   "records_count": 6,
+  "firestore_synced": 3,
   "customers": [
     {
       "name": "Miroslav Mišovic",

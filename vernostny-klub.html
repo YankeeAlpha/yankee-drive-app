@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yankee Drive – VIP Vernostný Klub</title>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <style>
+    :root {
+      --bg: #080a0f;
+      --card: #11151f;
+      --card-2: #171d2b;
+      --border: #252f42;
+      --gold: #eab308;
+      --gold-light: #fde047;
+      --gold-dim: rgba(234, 179, 8, 0.14);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --green: #22c55e;
+      --red: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body {
+      background: radial-gradient(circle at top, #171d2c 0%, var(--bg) 65%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: rgba(11, 14, 20, 0.88);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .nav-wrap {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 12px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text);
+    }
+    .brand img {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      object-fit: cover;
+      border: 1px solid rgba(234, 179, 8, 0.45);
+    }
+    .brand-title {
+      font-size: 17px;
+      font-weight: 900;
+      letter-spacing: 0.6px;
+      color: var(--gold);
+    }
+    .brand-sub {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      border: none;
+      border-radius: 10px;
+      padding: 9px 14px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+      transition: all 0.18s ease;
+    }
+    .btn-gold {
+      background: linear-gradient(135deg, #facc15 0%, #ca8a04 100%);
+      color: #000;
+      box-shadow: 0 4px 16px rgba(234, 179, 8, 0.25);
+    }
+    .btn-gold:hover { transform: translateY(-1px); filter: brightness(1.06); }
+    .btn-outline {
+      background: var(--card-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-outline:hover { border-color: var(--gold); color: var(--gold); }
+    .btn-green {
+      background: var(--green);
+      color: #000;
+    }
+    main {
+      max-width: 1000px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 26px 18px 50px;
+      flex: 1;
+    }
+    .hero {
+      text-align: center;
+      margin-bottom: 26px;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      background: var(--gold-dim);
+      border: 1px solid rgba(234, 179, 8, 0.35);
+      color: var(--gold);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 10px;
+    }
+    .hero h1 {
+      font-size: clamp(24px, 4vw, 36px);
+      font-weight: 900;
+      margin-bottom: 8px;
+    }
+    .hero p {
+      color: var(--muted);
+      font-size: 14px;
+      max-width: 600px;
+      margin: 0 auto;
+      line-height: 1.5;
+    }
+    .login-card {
+      max-width: 480px;
+      margin: 0 auto;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 26px;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+    }
+    .input-group { margin-bottom: 14px; }
+    .input-group label {
+      display: block;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .input {
+      width: 100%;
+      background: #0b0e15;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 13px 14px;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+    }
+    .input:focus { border-color: var(--gold); }
+    .hidden { display: none !important; }
+
+    /* VIP CARD & DASHBOARD */
+    .grid-top {
+      display: grid;
+      grid-template-columns: 1.35fr 1fr;
+      gap: 18px;
+      margin-bottom: 22px;
+    }
+    @media (max-width: 780px) {
+      .grid-top { grid-template-columns: 1fr; }
+    }
+    .vip-card {
+      background: linear-gradient(135deg, #1b2234 0%, #0d1018 55%, #231c09 100%);
+      border: 1px solid rgba(234, 179, 8, 0.45);
+      border-radius: 22px;
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 16px 38px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .vip-card::after {
+      content: "";
+      position: absolute;
+      top: -60px;
+      right: -60px;
+      width: 180px;
+      height: 180px;
+      background: radial-gradient(circle, rgba(234,179,8,0.22) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .vip-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .tier-badge {
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+      background: rgba(234, 179, 8, 0.2);
+      color: var(--gold-light);
+      border: 1px solid rgba(234, 179, 8, 0.5);
+    }
+    .points-big {
+      font-size: 42px;
+      font-weight: 900;
+      color: var(--gold);
+      line-height: 1;
+    }
+    .points-label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-top: 4px;
+    }
+    .progress-wrap {
+      margin-top: 18px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .progress-bar-bg {
+      height: 8px;
+      background: #1e293b;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #eab308, #fde047);
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+    .qr-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 20px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .qr-img-wrap {
+      background: #fff;
+      padding: 12px;
+      border-radius: 16px;
+      margin: 10px 0;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .section-title {
+      font-size: 18px;
+      font-weight: 800;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .rewards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .reward-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: border-color 0.2s;
+    }
+    .reward-card.unlocked {
+      border-color: rgba(234, 179, 8, 0.55);
+    }
+    .reward-pts {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--gold-dim);
+      color: var(--gold);
+      margin-bottom: 10px;
+    }
+    .reward-title { font-size: 16px; font-weight: 800; margin-bottom: 6px; }
+    .reward-desc { font-size: 12px; color: var(--muted); line-height: 1.45; margin-bottom: 14px; }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 20px;
+    }
+    .history-item {
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+    .history-item:last-child { border-bottom: none; }
+    .coupon-box {
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px dashed var(--green);
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 20px 18px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="nav-wrap">
+      <a href="https://www.yankeedrive.sk" class="brand">
+        <img src="logo_yd.png" alt="Yankee Drive Logo" onerror="this.style.display='none'" />
+        <div>
+          <div class="brand-title">YANKEE DRIVE</div>
+          <div class="brand-sub">VIP Vernostný Klub</div>
+        </div>
+      </a>
+      <div class="nav-actions">
+        <a href="poradna.html" class="btn btn-outline">🤖 AI Poradňa</a>
+        <a href="https://www.yankeedrive.sk/#section-bookings" class="btn btn-outline">📅 Online Rezervácia</a>
+        <button class="btn btn-outline" onclick="toggleStaffPanel()">🔐 Obsluha</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="hero">
+      <div class="hero-badge">⭐ Prémiový Vernostný Program • 1 € = 1 Bod</div>
+      <h1>Yankee Drive VIP Vernostná Karta</h1>
+      <p>Zbierajte body za každé ručné umývanie, detailing, tepovanie aj nákup autokozmetiky Koch Chemie & Colourlock na <strong>www.yankeedrive.sk</strong> a vymieňajte ich za okamžité odmeny.</p>
+    </div>
+
+    <!-- PRIHLÁSENIE ZÁKAZNÍKA -->
+    <div id="loginSection" class="login-card">
+      <div style="text-align:center;margin-bottom:18px;">
+        <img src="logo_yd.png" alt="Yankee Drive" style="width:68px;height:68px;border-radius:14px;border:1px solid rgba(234,179,8,0.45);margin-bottom:8px;" onerror="this.style.display='none'" />
+        <h2 style="font-size:20px;font-weight:800;">Vstúpiť do môjho konta</h2>
+        <p style="font-size:12px;color:var(--muted);margin-top:4px;">Zadajte svoj e-mail z objednávky alebo rezervácie na yankeedrive.sk</p>
+      </div>
+
+      <form onsubmit="handleLogin(event)">
+        <div class="input-group">
+          <label>Váš E-mail (alebo telefón / meno)</label>
+          <input type="text" id="userIdentifier" class="input" required placeholder="napr. vas@email.sk alebo +421 9XX XXX XXX" />
+        </div>
+        <button type="submit" class="btn btn-gold" style="width:100%;justify-content:center;padding:13px;font-size:14px;">
+          🔓 Zobraziť moju vernostnú kartu a body
+        </button>
+      </form>
+
+      <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;font-size:12px;">
+        <span style="color:var(--muted);">Ešte nemáte rezerváciu?</span>
+        <a href="https://www.yankeedrive.sk/#section-bookings" style="color:var(--gold);font-weight:700;text-decoration:none;">Objednať čistenie online →</a>
+      </div>
+    </div>
+
+    <!-- DASHBOARD PRIHLÁSENÉHO ZÁKAZNÍKA -->
+    <div id="dashboardSection" class="hidden">
+      <div class="grid-top">
+        <!-- DIGITÁLNA VIP KARTA -->
+        <div class="vip-card">
+          <div>
+            <div class="vip-head">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <img src="logo_yd.png" alt="YD" style="width:42px;height:42px;border-radius:10px;border:1px solid rgba(234,179,8,0.5);" onerror="this.style.display='none'" />
+                <div>
+                  <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;">Držiteľ VIP karty</div>
+                  <div id="displayName" style="font-size:20px;font-weight:900;color:#fff;">-</div>
+                  <div id="displayEmail" style="font-size:12px;color:var(--muted);">-</div>
+                </div>
+              </div>
+              <span id="tierBadge" class="tier-badge">BRONZE CLUB</span>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-top:10px;">
+              <div>
+                <div id="displayPoints" class="points-big">0</div>
+                <div class="points-label">Dostupných vernostných bodov</div>
+              </div>
+              <div style="text-align:right;">
+                <div id="displayOrdersCount" style="font-size:14px;font-weight:800;color:#fff;">0 objednávok</div>
+                <div id="displayCity" style="font-size:12px;color:var(--muted);">Pravidlo: 1 € = 1 bod</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="progress-wrap">
+            <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;">
+              <span id="nextRewardText">Najbližšia odmena: 100 bodov</span>
+              <span id="nextRewardPct" style="color:var(--gold);">0%</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div id="progressBarFill" class="progress-bar-fill"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- UNIKÁTNY QR KÓD KARTY -->
+        <div class="qr-box">
+          <div style="font-size:14px;font-weight:800;color:var(--gold);">Vaša digitálna karta do mobilu</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">Ukážte QR kód obsluhe v Milhostove 190 alebo pri vyzdvihnutí vozidla</div>
+          <div class="qr-img-wrap">
+            <img id="qrCodeImg" src="" alt="QR Kód" style="width:140px;height:140px;display:block;" />
+          </div>
+          <div id="displayCardId" style="font-family:monospace;font-size:13px;font-weight:800;color:var(--text);letter-spacing:1px;">ID: YD-0000</div>
+          <button onclick="logout()" class="btn btn-outline" style="margin-top:10px;padding:6px 12px;font-size:11px;">Odhlásiť sa / Zmeniť účet</button>
+        </div>
+      </div>
+
+      <!-- AKTÍVNE POUKAZY A KÓDY ZÁKAZNÍKA -->
+      <div id="activeCouponsPanel" class="panel hidden">
+        <div class="section-title" style="color:var(--green);">🎟️ Vaše uplatnené poukazy pripravené na použitie</div>
+        <div id="couponsList"></div>
+      </div>
+
+      <!-- KATALÓG ODMIEN -->
+      <div class="section-title">🎁 Dostupné odmeny za vernostné body</div>
+      <div class="rewards-grid">
+        <div class="reward-card" id="rewCard100">
+          <div>
+            <span class="reward-pts">100 bodov</span>
+            <div class="reward-title">Zľava 5 € v e-shope</div>
+            <div class="reward-desc">Okamžitá zľava 5 € na profesionálnu autokozmetiku Koch Chemie a Colourlock.</div>
+          </div>
+          <button onclick="redeemReward('Zľava 5 € v e-shope Koch Chemie', 100, 'YD5EUR')" class="btn btn-gold" style="width:100%;justify-content:center;">
+            Uplatniť za 100 b
+          </button>
+        </div>
+
+        <div class="reward-card" id="rewCard200">
+          <div>
+            <span class="reward-pts">200 bodov</span>
+            <div class="reward-title">Čistenie a ochrana diskov</div>
+            <div class="reward-desc">Hĺbková dekontaminácia brzdového prachu a ochranný sealant na disky zdarma k umývaniu.</div>
+          </div>
+          <button onclick="redeemReward('Čistenie a ochrana diskov zdarma', 200, 'YDDISKY')" class="btn btn-gold" style="width:100%;justify-content:center;">
+            Uplatniť za 200 b
+          </button>
+        </div>
+
+        <div class="reward-card" id="rewCard350">
+          <div>
+            <span class="reward-pts">350 bodov</span>
+            <div class="reward-title">Ozónová dezinfekcia (30 €)</div>
+            <div class="reward-desc">Kompletná dezinfekcia interiéru a klimatizácie ozónom v hodnote 30 € úplne zdarma.</div>
+          </div>
+          <button onclick="redeemReward('Ozónová dezinfekcia vozidla zdarma', 350, 'YDOZON')" class="btn btn-gold" style="width:100%;justify-content:center;">
+            Uplatniť za 350 b
+          </button>
+        </div>
+
+        <div class="reward-card" id="rewCard500">
+          <div>
+            <span class="reward-pts">500 bodov</span>
+            <div class="reward-title">VIP Zľava 25 € na Komplet</div>
+            <div class="reward-desc">Zľava 25 € na kompletný balíček Yankee Štandard alebo prémiový Yankee Exclusive.</div>
+          </div>
+          <button onclick="redeemReward('VIP Zľava 25 € na balíček Štandard/Exclusive', 500, 'YDVIP25')" class="btn btn-gold" style="width:100%;justify-content:center;">
+            Uplatniť za 500 b
+          </button>
+        </div>
+      </div>
+
+      <!-- HISTÓRIA OBJEDNÁVOK A ČISTENÍ -->
+      <div class="panel">
+        <div class="section-title">📋 História vašich objednávok a získaných bodov</div>
+        <div id="historyContainer" style="color:var(--muted);font-size:13px;">Načítavam históriu...</div>
+      </div>
+    </div>
+
+    <!-- REŽIM OBSLUHY (PIN 0750) NA RÝCHLE PRIPÍSANIE BODOV V MILHOSTOVE -->
+    <div id="staffPanel" class="panel hidden" style="margin-top:24px;border-color:var(--gold);">
+      <div class="section-title" style="color:var(--gold);">🔐 Režim obsluhy Yankee Drive – Pripísanie bodov zákazníkovi</div>
+      <div id="staffPinBox" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <input type="password" id="staffPinInput" class="input" placeholder="Zadajte PIN obsluhy (0750)" style="max-width:220px;" />
+        <button class="btn btn-gold" onclick="unlockStaff()">Odomknúť</button>
+      </div>
+      <div id="staffControls" class="hidden" style="margin-top:12px;">
+        <div style="display:grid;grid-template-columns:1.2fr 1fr 0.8fr auto;gap:8px;align-items:center;margin-bottom:10px;">
+          <input type="email" id="staffCustomerEmail" class="input" placeholder="E-mail zákazníka *" />
+          <input type="text" id="staffCustomerName" class="input" placeholder="Meno zákazníka" />
+          <input type="number" id="staffPointsAdd" class="input" placeholder="Body (+)" />
+          <button class="btn btn-gold" onclick="staffAddPoints()">➕ Pripísať body</button>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn btn-outline" onclick="quickSetPts(15, 'Vysávanie vozidla (15 €)')">+15 b (Vysávanie)</button>
+          <button class="btn btn-outline" onclick="quickSetPts(30, 'Ozónové čistenie (30 €)')">+30 b (Ozón)</button>
+          <button class="btn btn-outline" onclick="quickSetPts(45, 'Yankee Refresh (45 €)')">+45 b (Yankee Refresh)</button>
+          <button class="btn btn-outline" onclick="quickSetPts(50, 'Hĺbkové tepovanie (50 €)')">+50 b (Tepovanie)</button>
+          <button class="btn btn-outline" onclick="quickSetPts(80, 'Yankee Štandard (80 €)')">+80 b (Yankee Štandard)</button>
+          <button class="btn btn-outline" onclick="quickSetPts(200, 'Yankee Exclusive (200 €)')">+200 b (Yankee Exclusive)</button>
+        </div>
+        <div id="staffStatusMsg" style="margin-top:8px;font-size:12px;color:var(--green);"></div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>© 2026 <strong>Yankee Drive</strong> | Milhostov 190, 075 01 Trebišov • Tel.: +421 940 247 133 • <a href="https://www.yankeedrive.sk" style="color:var(--gold);text-decoration:none;">www.yankeedrive.sk</a></p>
+  </footer>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBym7aue9Fy0oIU00YpwcFQ1j20PO6-VMA",
+      authDomain: "yankee-drive-loyality-card.firebaseapp.com",
+      databaseURL: "https://yankee-drive-loyality-card-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "yankee-drive-loyality-card",
+      storageBucket: "yankee-drive-loyality-card.firebasestorage.app",
+      messagingSenderId: "1071364286187",
+      appId: "1:1071364286187:web:f28668685472ad5fbf40ae",
+      measurementId: "G-TCWH37NLM3"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let currentUserEmail = localStorage.getItem("yd_live_email") || "";
+    let welcomioCustomers = [];
+    let currentReasonNote = "Čistenie v prevádzke Milhostov";
+
+    async function loadWelcomioBackup() {
+      try {
+        const r = await fetch("customers_data.json?t=" + Date.now());
+        if (r.ok) {
+          const j = await r.json();
+          welcomioCustomers = j.customers || [];
+        }
+      } catch (e) {}
+    }
+
+    window.addEventListener("DOMContentLoaded", async () => {
+      await loadWelcomioBackup();
+      if (currentUserEmail) {
+        loadUserData(currentUserEmail);
+      }
+    });
+
+    function findWelcomioCustomer(query) {
+      const q = query.trim().toLowerCase();
+      return welcomioCustomers.find(c =>
+        (c.email && c.email.toLowerCase() === q) ||
+        (c.phone && c.phone.replace(/\s+/g, "") === q.replace(/\s+/g, "")) ||
+        (c.name && c.name.toLowerCase().includes(q))
+      );
+    }
+
+    async function handleLogin(event) {
+      event.preventDefault();
+      const rawInput = document.getElementById("userIdentifier").value.trim();
+      if (!rawInput) return;
+
+      const matched = findWelcomioCustomer(rawInput);
+      const email = (matched && matched.email) ? matched.email.toLowerCase() : rawInput.toLowerCase();
+
+      currentUserEmail = email;
+      localStorage.setItem("yd_live_email", currentUserEmail);
+
+      try {
+        const userRef = db.collection("customers").doc(email);
+        const doc = await userRef.get();
+        if (!doc.exists) {
+          const initPts = matched ? Number(matched.loyalty_points || 0) : 0;
+          await userRef.set({
+            email: email,
+            name: matched ? matched.name : email.split("@")[0],
+            phone: matched ? (matched.phone || "") : "",
+            city: matched ? (matched.city || "") : "",
+            ordersCount: matched ? Number(matched.orders_count || 0) : 0,
+            totalSpentEur: matched ? Number(matched.total_spent_eur || 0) : 0,
+            welcomioPoints: initPts,
+            bonusPoints: 0,
+            redeemedPoints: 0,
+            points: initPts,
+            historyText: matched && matched.history ? matched.history.join(" | ") : "",
+            createdAt: new Date()
+          });
+        }
+      } catch (e) {}
+
+      loadUserData(email);
+    }
+
+    function updateDashboardUI(data, email) {
+      const matched = findWelcomioCustomer(email);
+      const name = data.name || (matched && matched.name) || email;
+      const pts = Number(data.points !== undefined ? data.points : (matched ? matched.loyalty_points : 0));
+      const ordersCount = Number(data.ordersCount || (matched ? matched.orders_count : 0));
+      const city = data.city || (matched && matched.city) || "Yankee Drive Club";
+      const historyStr = data.historyText || (matched && matched.history ? matched.history.join(" | ") : "");
+
+      document.getElementById("displayName").textContent = name;
+      document.getElementById("displayEmail").textContent = email;
+      document.getElementById("displayPoints").textContent = pts;
+      document.getElementById("displayOrdersCount").textContent = `${ordersCount} ${ordersCount === 1 ? "objednávka" : "objednávky"}`;
+      document.getElementById("displayCity").textContent = city ? `📍 ${city}` : "Pravidlo: 1 € = 1 bod";
+
+      // Tier badge
+      const tierEl = document.getElementById("tierBadge");
+      if (pts >= 250) {
+        tierEl.textContent = "👑 GOLD VIP CLUB";
+      } else if (pts >= 100) {
+        tierEl.textContent = "⭐ SILVER CLUB";
+      } else {
+        tierEl.textContent = "🛡️ BRONZE CLUB";
+      }
+
+      // Progress bar to next reward
+      const thresholds = [100, 200, 350, 500];
+      const nextTarget = thresholds.find(t => pts < t) || 500;
+      const pct = Math.min(100, Math.round((pts / nextTarget) * 100));
+      document.getElementById("nextRewardText").textContent =
+        pts >= 500 ? "Dosiahli ste najvyššiu VIP odmenu (500 b)!" : `Do ďalšej odmeny (${nextTarget} b) chýba ešte ${nextTarget - pts} bodov`;
+      document.getElementById("nextRewardPct").textContent = `${pct}%`;
+      document.getElementById("progressBarFill").style.width = `${pct}%`;
+
+      // Highlight unlocked cards
+      [100, 200, 350, 500].forEach(t => {
+        const el = document.getElementById("rewCard" + t);
+        if (el) el.classList.toggle("unlocked", pts >= t);
+      });
+
+      // Render history
+      const histEl = document.getElementById("historyContainer");
+      const items = historyStr ? historyStr.split(" | ").filter(Boolean) : [];
+      if (items.length === 0) {
+        histEl.innerHTML = `<div style="padding:8px 0;">Zatiaľ žiadne zaznamenané objednávky na tento e-mail. Pri ďalšom čistení alebo nákupe na <strong>www.yankeedrive.sk</strong> sa vám body pripíšu automaticky!</div>`;
+      } else {
+        histEl.innerHTML = items.map(line => `
+          <div class="history-item">
+            <span>✅ ${line}</span>
+            <span style="color:var(--gold);font-weight:700;">Započítané v bodoch</span>
+          </div>
+        `).join("");
+      }
+
+      // Render active coupons (saved in localStorage + Firestore)
+      renderCoupons(email, data.lastCouponCode, data.lastCouponName);
+    }
+
+    function loadUserData(email) {
+      document.getElementById("loginSection").classList.add("hidden");
+      document.getElementById("dashboardSection").classList.remove("hidden");
+      document.getElementById("staffCustomerEmail").value = email;
+
+      const qrText = encodeURIComponent(`YANKEE-DRIVE-USER:${email}`);
+      document.getElementById("qrCodeImg").src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${qrText}&color=0b0e14`;
+      document.getElementById("displayCardId").textContent = `ID: YD-${Math.abs(hashCode(email)) % 9000 + 1000}`;
+
+      // Initial render from backup
+      updateDashboardUI({}, email);
+
+      // Live Firestore listener
+      db.collection("customers").doc(email).onSnapshot((doc) => {
+        if (doc.exists) {
+          updateDashboardUI(doc.data(), email);
+        }
+      });
+    }
+
+    async function redeemReward(rewardName, cost, prefix) {
+      const userRef = db.collection("customers").doc(currentUserEmail);
+      const doc = await userRef.get();
+      const data = doc.exists ? doc.data() : {};
+      const currentPoints = Number(data.points || 0);
+
+      if (currentPoints < cost) {
+        alert(`Na odmenu "${rewardName}" potrebujete ${cost} bodov. Aktuálne máte ${currentPoints} bodov (chýba ešte ${cost - currentPoints} b).`);
+        return;
+      }
+
+      const code = `${prefix}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const newPoints = currentPoints - cost;
+      const newRedeemed = Number(data.redeemedPoints || 0) + cost;
+
+      await userRef.set({
+        points: newPoints,
+        redeemedPoints: newRedeemed,
+        lastCouponCode: code,
+        lastCouponName: rewardName
+      }, { merge: true });
+
+      const localCoupons = JSON.parse(localStorage.getItem("yd_coupons_" + currentUserEmail) || "[]");
+      localCoupons.unshift({ code, name: rewardName, date: new Date().toISOString().slice(0, 10) });
+      localStorage.setItem("yd_coupons_" + currentUserEmail, JSON.stringify(localCoupons));
+      renderCoupons(currentUserEmail, code, rewardName);
+
+      alert(`🎉 Gratulujeme! Odmena "${rewardName}" bola aktivovaná.\nVáš unikátny kód: ${code}\nUkážte ho obsluhe Yankee Drive alebo kliknite na tlačidlo Odoslať cez WhatsApp.`);
+    }
+
+    function renderCoupons(email, lastCode, lastName) {
+      const localCoupons = JSON.parse(localStorage.getItem("yd_coupons_" + email) || "[]");
+      if (lastCode && !localCoupons.some(c => c.code === lastCode)) {
+        localCoupons.unshift({ code: lastCode, name: lastName || "Vernostná odmena", date: "Aktívne" });
+      }
+      const panel = document.getElementById("activeCouponsPanel");
+      const list = document.getElementById("couponsList");
+      if (localCoupons.length === 0) {
+        panel.classList.add("hidden");
+        return;
+      }
+      panel.classList.remove("hidden");
+      list.innerHTML = localCoupons.map(c => {
+        const waMsg = encodeURIComponent(`Dobrý deň Yankee Drive, uplatňujem si vernostnú odmenu "${c.name}" (Kód: ${c.code}, účet: ${email}). Prosím o potvrdenie.`);
+        return `
+          <div class="coupon-box">
+            <div>
+              <div style="font-size:14px;font-weight:800;color:#fff;">🎁 ${c.name}</div>
+              <div style="font-size:12px;color:var(--gold);font-family:monospace;margin-top:2px;">KÓD POUKAZU: <strong>${c.code}</strong> • (${c.date})</div>
+            </div>
+            <a href="https://wa.me/421901788110?text=${waMsg}" target="_blank" class="btn btn-green">📲 Uplatniť cez WhatsApp</a>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function toggleStaffPanel() {
+      const p = document.getElementById("staffPanel");
+      p.classList.toggle("hidden");
+      p.scrollIntoView({ behavior: "smooth" });
+    }
+
+    function unlockStaff() {
+      const pin = document.getElementById("staffPinInput").value.trim();
+      if (pin === "0750") {
+        document.getElementById("staffPinBox").classList.add("hidden");
+        document.getElementById("staffControls").classList.remove("hidden");
+      } else {
+        alert("Nesprávny PIN obsluhy.");
+      }
+    }
+
+    function quickSetPts(pts, label) {
+      document.getElementById("staffPointsAdd").value = pts;
+      currentReasonNote = label;
+    }
+
+    async function staffAddPoints() {
+      const email = document.getElementById("staffCustomerEmail").value.trim().toLowerCase();
+      const name = document.getElementById("staffCustomerName").value.trim();
+      const addPts = parseInt(document.getElementById("staffPointsAdd").value || "0", 10);
+      if (!email || !addPts) return;
+
+      const userRef = db.collection("customers").doc(email);
+      const doc = await userRef.get();
+      const data = doc.exists ? doc.data() : {};
+      const curPts = Number(data.points || 0);
+      const curBonus = Number(data.bonusPoints || 0);
+      const curOrders = Number(data.ordersCount || 0);
+      const today = new Date().toISOString().slice(0, 10);
+      const prevHist = data.historyText ? data.historyText + " | " : "";
+      const newHist = `${today}: ${currentReasonNote} (+${addPts} b)` + (prevHist ? " | " + data.historyText : "");
+
+      await userRef.set({
+        email: email,
+        name: name || data.name || email.split("@")[0],
+        points: curPts + addPts,
+        bonusPoints: curBonus + addPts,
+        ordersCount: curOrders + 1,
+        historyText: newHist
+      }, { merge: true });
+
+      document.getElementById("staffStatusMsg").textContent = `✅ Úspešne pripísaných +${addPts} bodov na účet ${email} (Nový zostatok: ${curPts + addPts} b).`;
+      document.getElementById("staffPointsAdd").value = "";
+    }
+
+    function logout() {
+      localStorage.removeItem("yd_live_email");
+      location.reload();
+    }
+
+    function hashCode(str) {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        hash |= 0;
+      }
+      return hash;
+    }
+  </script>
+</body>
+</html>
