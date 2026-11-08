@@ -1,0 +1,58 @@
+name: Yankee Drive – Denný Report (20:00 SK)
+
+on:
+  schedule:
+    # Spúšťa sa o 18:00 UTC a 19:00 UTC (skript overí presne 20:00 v Europe/Bratislava pre letný aj zimný čas)
+    - cron: '0 18 * * *'
+    - cron: '0 19 * * *'
+  workflow_dispatch:
+
+jobs:
+  send-daily-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Generate and Send Daily Report at 20:00 Europe/Bratislava
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          ZOHO_EMAIL: ${{ secrets.ZOHO_EMAIL }}
+          ZOHO_ACCOUNT_ID: ${{ secrets.ZOHO_ACCOUNT_ID }}
+          ZOHO_CLIENT_ID: ${{ secrets.ZOHO_CLIENT_ID }}
+          ZOHO_CLIENT_SECRET: ${{ secrets.ZOHO_CLIENT_SECRET }}
+          ZOHO_REFRESH_TOKEN: ${{ secrets.ZOHO_REFRESH_TOKEN }}
+          ZOHO_REGION: ${{ secrets.ZOHO_REGION }}
+          WELCOMIO_EMAIL: ${{ secrets.WELCOMIO_EMAIL }}
+          WELCOMIO_PASSWORD: ${{ secrets.WELCOMIO_PASSWORD }}
+          META_APP_ID: ${{ secrets.META_APP_ID }}
+          META_PAGE_ID: ${{ secrets.META_PAGE_ID }}
+          META_PAGE_NAME: ${{ secrets.META_PAGE_NAME }}
+          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
+          META_IG_USER_ID: ${{ secrets.META_IG_USER_ID }}
+          META_IG_USERNAME: ${{ secrets.META_IG_USERNAME }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          GOOGLE_GBP_ACCOUNT: ${{ secrets.GOOGLE_GBP_ACCOUNT }}
+          GOOGLE_GBP_LOCATION: ${{ secrets.GOOGLE_GBP_LOCATION }}
+        run: |
+          python3 - << 'EOF'
+          import os, subprocess, sys
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+
+          now_sk = datetime.now(ZoneInfo("Europe/Bratislava"))
+          event = os.environ.get("EVENT_NAME", "")
+          print(f"Aktuálny čas na Slovensku: {now_sk.strftime('%Y-%m-%d %H:%M:%S %Z')} (event={event})")
+
+          if event == "schedule" and now_sk.hour != 20:
+              print("Preskakujem beh (iný posun letného/zimného času, čakám na 20:00 Europe/Bratislava).")
+              sys.exit(0)
+
+          res = subprocess.run(["python3", "tools/yankee_briefing.py", "--send-email", "--to", "servis@yankeedrive.sk"])
+          sys.exit(res.returncode)
+          EOF
