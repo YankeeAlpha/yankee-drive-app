@@ -11,6 +11,11 @@
   <link rel="manifest" href="./manifest.json" />
   <link rel="icon" type="image/svg+xml" href="./icon.svg" />
   <link rel="apple-touch-icon" href="./icon.svg" />
+  <!-- Firebase SDK pre živé prepojenie s Vernostným Klubom -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <!-- HTML5 QR Code Scanner pre kameru mobilu/PC -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     :root {
       --bg: #0c0d10;
@@ -22,6 +27,7 @@
       --amber: #f59e0b;
       --amber-soft: rgba(245, 158, 11, 0.15);
       --green: #10b981;
+      --red: #ef4444;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     body {
@@ -56,18 +62,16 @@
       flex-direction: column;
       gap: 16px;
     }
-    .logo-badge {
-      width: 56px;
-      height: 56px;
-      border-radius: 16px;
-      background: var(--amber);
-      color: #0c0d10;
-      font-weight: 900;
-      font-size: 22px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    .logo-img-box {
+      width: 104px;
+      height: 70px;
+      border-radius: 14px;
+      background: #ffffff;
+      border: 2px solid var(--amber);
+      padding: 6px 12px;
+      object-fit: contain;
       margin: 0 auto;
+      box-shadow: 0 4px 16px rgba(255, 255, 255, 0.12);
     }
     .pin-input {
       background: var(--bg);
@@ -90,17 +94,20 @@
       background: rgba(21, 24, 32, 0.92);
       backdrop-filter: blur(10px);
       border-bottom: 1px solid var(--border);
-      padding: 14px 16px;
+      padding: 12px 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
     .topbar-left { display: flex; align-items: center; gap: 10px; }
-    .mini-logo {
-      width: 36px; height: 36px; border-radius: 10px;
-      background: var(--amber); color: #0c0d10;
-      font-weight: 900; font-size: 14px;
-      display: flex; align-items: center; justify-content: center;
+    .mini-logo-img {
+      width: 52px;
+      height: 40px;
+      border-radius: 10px;
+      background: #ffffff;
+      border: 2px solid var(--amber);
+      padding: 3px 6px;
+      object-fit: contain;
     }
     .container {
       max-width: 780px;
@@ -122,10 +129,17 @@
       flex-direction: column;
       gap: 12px;
     }
-    .card-title { font-size: 16px; font-weight: 700; }
+    .card-highlight {
+      border-color: rgba(245, 158, 11, 0.55);
+      background: linear-gradient(145deg, #191d28 0%, #12151d 100%);
+    }
+    .card-title { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
     .card-sub { font-size: 12px; color: var(--muted); }
 
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 520px) {
+      .grid-2-mobile-1 { grid-template-columns: 1fr; }
+    }
     .stat-box {
       background: var(--elevated);
       border: 1px solid var(--border);
@@ -153,12 +167,26 @@
       background: var(--amber);
       color: #0c0d10;
       border-color: var(--amber);
-      font-weight: 700;
+      font-weight: 800;
+    }
+    .btn-green {
+      background: var(--green);
+      color: #052e16;
+      border-color: var(--green);
+      font-weight: 800;
     }
     .chip-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
+    }
+    .chip-grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    @media (max-width: 520px) {
+      .chip-grid-3 { grid-template-columns: 1fr 1fr; }
     }
     .chip-btn {
       padding: 10px;
@@ -203,6 +231,7 @@
       align-items: center;
       justify-content: space-between;
       gap: 8px;
+      flex-wrap: wrap;
     }
     .badge-pts {
       background: var(--amber-soft);
@@ -212,6 +241,29 @@
       border-radius: 999px;
       font-size: 12px;
       font-weight: 700;
+    }
+
+    #qr-reader {
+      width: 100%;
+      max-width: 420px;
+      margin: 0 auto;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 2px solid var(--amber);
+      display: none;
+      background: #000;
+    }
+
+    .scanned-profile {
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
     }
 
     .bottom-nav {
@@ -248,7 +300,7 @@
       transform: translateX(-50%);
       background: var(--amber);
       color: #0c0d10;
-      font-weight: 700;
+      font-weight: 800;
       font-size: 13px;
       padding: 10px 18px;
       border-radius: 999px;
@@ -264,7 +316,7 @@
 
   <div id="pin-overlay">
     <div class="pin-card">
-      <div class="logo-badge">YD</div>
+      <img src="logo_yd.png" alt="Yankee Drive" class="logo-img-box" onerror="this.style.display='none'" />
       <div>
         <h2 style="font-size:18px;font-weight:800;">Yankee Drive Interný</h2>
         <p style="font-size:13px;color:var(--muted);margin-top:4px;">Zadajte firemný PIN kód pre odomknutie aplikácie</p>
@@ -277,10 +329,10 @@
 
   <header class="topbar">
     <div class="topbar-left">
-      <div class="mini-logo">YD</div>
+      <img src="logo_yd.png" alt="YD" class="mini-logo-img" onerror="this.style.display='none'" />
       <div>
         <div style="font-size:15px;font-weight:800;">Yankee Drive</div>
-        <div style="font-size:12px;color:var(--muted);">Firemný Asistent & Zákazníci</div>
+        <div style="font-size:12px;color:var(--muted);">Firemný Asistent • QR Skener & Zákazníci</div>
       </div>
     </div>
     <button class="btn" style="padding:7px 11px;font-size:12px;" onclick="lockApp()">🔒 Zamknúť</button>
@@ -289,15 +341,78 @@
   <div id="toast" class="toast"></div>
 
   <main class="container">
-    <!-- 1. ZÁKAZNÍCI & EXCEL TABUĽKA -->
+    <!-- 1. QR SKENER VERNOSTNÉHO KLUBU + ZÁKAZNÍCI & EXCEL -->
     <section id="tab-customers" class="panel active">
-      <div class="card">
+
+      <!-- NOVÉ: SKENER QR KÓDOV A ZAPISOVANIE BODOV DO VERNOSTNEJ KARTY -->
+      <div class="card card-highlight" id="loyalty-scanner-card">
         <div>
-          <div class="card-title">👥 Databáza zákazníkov & Stiahnutie do PC (Excel)</div>
-          <div class="card-sub">Automaticky synchronizované z Welcomio objednávok a rezervácií čistenia</div>
+          <div class="card-title" style="color:var(--amber);">📷 Skener QR Vernostných Kariet & Pripisovanie Bodov</div>
+          <div class="card-sub">Naskenujte QR kód zákazníka z jeho mobilu alebo vyberte e-mail a ihneď mu zapíšte body (1 € = 1 bod)</div>
+        </div>
+
+        <div class="grid-2 grid-2-mobile-1">
+          <button id="btn-start-scan" class="btn btn-amber" onclick="toggleCameraScanner()">
+            📷 Zapnúť kameru a načítať QR kód
+          </button>
+          <label class="btn" style="cursor:pointer;">
+            🖼️ Skenovať QR z fotky / galérie
+            <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="scanQrFromFile(this)" />
+          </label>
+        </div>
+
+        <!-- Kontajner pre kameru -->
+        <div id="qr-reader"></div>
+
+        <!-- Vyhľadanie / načítaný účet zákazníka -->
+        <div style="display:flex;gap:8px;">
+          <input id="qr-email-input" type="email" class="input" placeholder="Alebo zadajte e-mail zákazníka (napr. mirik.misovic@gmail.com)" />
+          <button class="btn" style="white-space:nowrap;" onclick="loadLoyaltyAccountByInput()">🔍 Načítať kartu</button>
+        </div>
+
+        <!-- Zobrazenie načítanej karty zákazníka -->
+        <div id="scanned-customer-box" class="scanned-profile" style="display:none;">
+          <div>
+            <div style="font-size:11px;color:var(--amber);font-weight:800;text-transform:uppercase;">✅ Načítaná vernostná karta</div>
+            <div id="sc-name" style="font-size:17px;font-weight:800;color:#fff;margin-top:2px;">-</div>
+            <div id="sc-email" style="font-size:12px;color:var(--muted);">-</div>
+            <div id="sc-coupon" style="font-size:12px;color:var(--green);margin-top:3px;font-weight:700;"></div>
+          </div>
+          <div style="text-align:right;">
+            <div id="sc-points" style="font-size:28px;font-weight:900;color:var(--amber);line-height:1;">0 b</div>
+            <div style="font-size:11px;color:var(--muted);">Aktuálny zostatok</div>
+          </div>
+        </div>
+
+        <!-- Rýchle tlačidlá služieb na pripísanie bodov -->
+        <div style="font-size:12px;font-weight:700;color:var(--muted);">Rýchla voľba služby (1 € = 1 bod):</div>
+        <div class="chip-grid-3">
+          <button class="chip-btn" onclick="presetLoyaltyPoints(15, 'Vysávanie auta (15 €)')">🧹 +15 b (Vysávanie)</button>
+          <button class="chip-btn" onclick="presetLoyaltyPoints(30, 'Ozónové čistenie (30 €)')">🌬️ +30 b (Ozón)</button>
+          <button class="chip-btn" onclick="presetLoyaltyPoints(45, 'Yankee Refresh (45 €)')">✨ +45 b (Refresh)</button>
+          <button class="chip-btn" onclick="presetLoyaltyPoints(50, 'Hĺbkové tepovanie (50 €)')">🛋️ +50 b (Tepovanie)</button>
+          <button class="chip-btn" onclick="presetLoyaltyPoints(80, 'Yankee Štandard (80 €)')">🧼 +80 b (Štandard)</button>
+          <button class="chip-btn" onclick="presetLoyaltyPoints(200, 'Yankee Exclusive (200 €)')">💎 +200 b (Exclusive)</button>
         </div>
 
         <div class="grid-2">
+          <input id="qr-points-delta" type="number" class="input" placeholder="Počet bodov (napr. 80 alebo -100)" />
+          <input id="qr-points-note" type="text" class="input" placeholder="Poznámka (napr. Yankee Štandard)" />
+        </div>
+
+        <button class="btn btn-green" onclick="savePointsToFirebase()">
+          ✅ Zapísať body rovno na vernostnú kartu zákazníka
+        </button>
+      </div>
+
+      <!-- DATABÁZA ZÁKAZNÍKOV & STIAHNUTIE DO EXCELU -->
+      <div class="card">
+        <div>
+          <div class="card-title">👥 Databáza zákazníkov & Stiahnutie do PC (Excel)</div>
+          <div class="card-sub">Automaticky synchronizované z Welcomio objednávok, rezervácií a Vernostného Klubu</div>
+        </div>
+
+        <div class="grid-2 grid-2-mobile-1">
           <button class="btn btn-amber" onclick="downloadCustomersCsv()">📥 Stiahnuť Zákazníkov (.CSV pre Excel)</button>
           <button class="btn" onclick="downloadOrdersCsv()">📥 Stiahnuť Všetky Objednávky (.CSV)</button>
         </div>
@@ -308,18 +423,18 @@
       <div class="card">
         <div>
           <div class="card-title">➕ Pridať nového zákazníka / čistenie do tabuľky</div>
-          <div class="card-sub">Pre telefonické alebo osobné objednávky mimo webu</div>
+          <div class="card-sub">Pre telefonické alebo osobné objednávky mimo webu (automaticky zapíše aj vernostné body)</div>
         </div>
         <div class="grid-2">
           <input id="nc-name" type="text" class="input" placeholder="Meno a priezvisko" />
           <input id="nc-phone" type="tel" class="input" placeholder="Telefón (+421...)" />
         </div>
         <div class="grid-2">
-          <input id="nc-email" type="email" class="input" placeholder="E-mail (voliteľné)" />
+          <input id="nc-email" type="email" class="input" placeholder="E-mail (pre vernostnú kartu)" />
           <input id="nc-price" type="number" class="input" placeholder="Suma (€) napr. 80" />
         </div>
         <input id="nc-service" type="text" class="input" placeholder="Služba / Produkt (napr. Yankee Štandard + Ozón)" />
-        <button class="btn btn-amber" onclick="addManualCustomer()">💾 Pridať do zoznamu zákazníkov</button>
+        <button class="btn btn-amber" onclick="addManualCustomer()">💾 Pridať do zoznamu + Pripísať body</button>
       </div>
     </section>
 
@@ -432,6 +547,7 @@
       <div class="card">
         <div class="card-title">🔗 Rýchly prístup do administrácie</div>
         <a href="https://admin.welcomio.com" target="_blank" rel="noopener" class="btn btn-amber">⚙️ Welcomio Administrácia (Rezervácie & E-shop) ↗</a>
+        <a href="./vernostny-klub.html" target="_blank" rel="noopener" class="btn">⭐ Yankee Drive – VIP Vernostný Klub 2.0 ↗</a>
         <a href="./poradna.html" target="_blank" rel="noopener" class="btn">🤖 AI Zákaznícka Poradňa Yankee Drive ↗</a>
         <a href="https://www.yankeedrive.sk" target="_blank" rel="noopener" class="btn">🌐 Web www.yankeedrive.sk ↗</a>
         <a href="https://mail.zoho.eu" target="_blank" rel="noopener" class="btn">✉️ Zoho Mail (servis@yankeedrive.sk) ↗</a>
@@ -444,8 +560,8 @@
 
   <nav class="bottom-nav">
     <button class="nav-item active" onclick="openTab('customers', this)">
-      <span class="nav-icon">👥</span>
-      <span>Zákazníci</span>
+      <span class="nav-icon">📷</span>
+      <span>QR & Zákazníci</span>
     </button>
     <button class="nav-item" onclick="openTab('wa', this)">
       <span class="nav-icon">💬</span>
@@ -467,6 +583,23 @@
 
   <script>
     const DEFAULT_PIN = "0750";
+
+    // Firebase inicializácia (zdieľaná s Vernostným Klubom)
+    const firebaseConfig = {
+      apiKey: "AIzaSyBym7aue9Fy0oIU00YpwcFQ1j20PO6-VMA",
+      authDomain: "yankee-drive-loyality-card.firebaseapp.com",
+      databaseURL: "https://yankee-drive-loyality-card-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "yankee-drive-loyality-card",
+      storageBucket: "yankee-drive-loyality-card.firebasestorage.app",
+      messagingSenderId: "1071364286187",
+      appId: "1:1071364286187:web:f28668685472ad5fbf40ae",
+      measurementId: "G-TCWH37NLM3"
+    };
+    let db = null;
+    try {
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore();
+    } catch (e) {}
 
     const BASE_CUSTOMERS = [
       {
@@ -521,6 +654,225 @@
       { type: "E-shop objednávka", number: "482776", date: "2026-09-14", name: "Bystrík Grotkovský", email: "grotko1234@gmail.com", phone: "+421 950 482 933", city: "Spišská Belá", items: "1x Koch Chemie Sada na čistenie okien bez šmúh", total_eur: 24.40, status: "Zrušené" }
     ];
 
+    // ================= QR SKENER & FIREBASE BODY =================
+    let html5QrScanner = null;
+    let isScanning = false;
+
+    function parseQrPayload(decodedText) {
+      const raw = String(decodedText || "").trim();
+      if (raw.toUpperCase().startsWith("YANKEE-DRIVE-USER:")) {
+        return raw.slice("YANKEE-DRIVE-USER:".length).trim().toLowerCase();
+      }
+      return raw.toLowerCase();
+    }
+
+    async function toggleCameraScanner() {
+      const readerEl = document.getElementById("qr-reader");
+      const btn = document.getElementById("btn-start-scan");
+
+      if (isScanning && html5QrScanner) {
+        try {
+          await html5QrScanner.stop();
+        } catch (e) {}
+        isScanning = false;
+        readerEl.style.display = "none";
+        btn.textContent = "📷 Zapnúť kameru a načítať QR kód";
+        return;
+      }
+
+      readerEl.style.display = "block";
+      btn.textContent = "⏹️ Vypnúť kameru";
+      if (!html5QrScanner) {
+        html5QrScanner = new Html5Qrcode("qr-reader");
+      }
+      try {
+        isScanning = true;
+        await html5QrScanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 220, height: 220 } },
+          async (decodedText) => {
+            const email = parseQrPayload(decodedText);
+            document.getElementById("qr-email-input").value = email;
+            toast("✅ QR kód načítaný: " + email);
+            try {
+              await html5QrScanner.stop();
+            } catch (e) {}
+            isScanning = false;
+            readerEl.style.display = "none";
+            btn.textContent = "📷 Zapnúť kameru a načítať QR kód";
+            loadLoyaltyAccount(email);
+          },
+          () => {}
+        );
+      } catch (err) {
+        isScanning = false;
+        readerEl.style.display = "none";
+        btn.textContent = "📷 Zapnúť kameru a načítať QR kód";
+        toast("⚠️ Kamera nie je povolená – použite Skenovať QR z fotky alebo zadajte e-mail.");
+      }
+    }
+
+    async function scanQrFromFile(inputEl) {
+      if (!inputEl.files || !inputEl.files[0]) return;
+      const file = inputEl.files[0];
+      if (!html5QrScanner) {
+        html5QrScanner = new Html5Qrcode("qr-reader");
+      }
+      try {
+        const decodedText = await html5QrScanner.scanFile(file, true);
+        const email = parseQrPayload(decodedText);
+        document.getElementById("qr-email-input").value = email;
+        toast("✅ QR kód z fotky načítaný: " + email);
+        loadLoyaltyAccount(email);
+      } catch (e) {
+        toast("⚠️ Na fotke sa nenašiel čitateľný QR kód.");
+      }
+    }
+
+    function loadLoyaltyAccountByInput() {
+      const email = document.getElementById("qr-email-input").value.trim().toLowerCase();
+      if (!email) {
+        toast("Zadajte e-mail zákazníka alebo naskenujte QR kód.");
+        return;
+      }
+      loadLoyaltyAccount(email);
+    }
+
+    function selectCustomerForLoyalty(email, name) {
+      document.getElementById("qr-email-input").value = email;
+      document.getElementById("loyalty-scanner-card").scrollIntoView({ behavior: "smooth" });
+      loadLoyaltyAccount(email, name);
+    }
+
+    async function loadLoyaltyAccount(email, fallbackName) {
+      const box = document.getElementById("scanned-customer-box");
+      box.style.display = "flex";
+      const localMatch = getCustomers().find((c) => (c.email || "").toLowerCase() === email.toLowerCase());
+
+      if (!db) {
+        document.getElementById("sc-name").textContent = fallbackName || (localMatch && localMatch.name) || email;
+        document.getElementById("sc-email").textContent = email;
+        document.getElementById("sc-points").textContent = ((localMatch && localMatch.loyalty_points) || 0) + " b";
+        return;
+      }
+
+      try {
+        const doc = await db.collection("customers").doc(email).get();
+        if (doc.exists) {
+          const d = doc.data();
+          document.getElementById("sc-name").textContent = d.name || fallbackName || (localMatch && localMatch.name) || email;
+          document.getElementById("sc-email").textContent = email;
+          document.getElementById("sc-points").textContent = (d.points || 0) + " b";
+          document.getElementById("sc-coupon").textContent = d.lastCouponCode
+            ? `🎟️ Aktívny poukaz: ${d.lastCouponName || "Odmena"} (${d.lastCouponCode})`
+            : "";
+        } else {
+          const initPts = localMatch ? Number(localMatch.loyalty_points || 0) : 0;
+          const initName = fallbackName || (localMatch && localMatch.name) || email.split("@")[0];
+          document.getElementById("sc-name").textContent = initName;
+          document.getElementById("sc-email").textContent = email;
+          document.getElementById("sc-points").textContent = initPts + " b";
+          document.getElementById("sc-coupon").textContent = "Nová vernostná karta (vytvorí sa pri zápise bodov)";
+        }
+      } catch (e) {
+        toast("⚠️ Chyba pri načítaní Firebase karty.");
+      }
+    }
+
+    function presetLoyaltyPoints(pts, note) {
+      document.getElementById("qr-points-delta").value = pts;
+      document.getElementById("qr-points-note").value = note;
+    }
+
+    async function savePointsToFirebase() {
+      const email = document.getElementById("qr-email-input").value.trim().toLowerCase();
+      const delta = parseInt(document.getElementById("qr-points-delta").value || "0", 10);
+      const note = document.getElementById("qr-points-note").value.trim() || "Čistenie vozidla v Yankee Drive";
+
+      if (!email) {
+        toast("Najprv naskenujte QR kód alebo zadajte e-mail zákazníka!");
+        return;
+      }
+      if (!delta) {
+        toast("Zadajte počet bodov na pripísanie (alebo vyberte službu vyššie)!");
+        return;
+      }
+
+      const localMatch = getCustomers().find((c) => (c.email || "").toLowerCase() === email);
+      const today = new Date().toISOString().slice(0, 10);
+
+      try {
+        const userRef = db.collection("customers").doc(email);
+        const doc = await userRef.get();
+        const data = doc.exists ? doc.data() : {};
+        const curPts = Number(data.points !== undefined ? data.points : (localMatch ? localMatch.loyalty_points : 0));
+        const newPts = Math.max(0, curPts + delta);
+        const curBonus = Number(data.bonusPoints || 0) + (delta > 0 ? delta : 0);
+        const curOrders = Number(data.ordersCount !== undefined ? data.ordersCount : (localMatch ? localMatch.orders_count : 0)) + (delta > 0 ? 1 : 0);
+        const custName = data.name || (localMatch && localMatch.name) || email.split("@")[0];
+        const prevHist = data.historyText || (localMatch && localMatch.history ? localMatch.history.join(" | ") : "");
+        const sign = delta > 0 ? `+${delta} b` : `${delta} b`;
+        const newHist = `${today}: ${note} (${sign})` + (prevHist ? " | " + prevHist : "");
+
+        await userRef.set({
+          email: email,
+          name: custName,
+          points: newPts,
+          bonusPoints: curBonus,
+          ordersCount: curOrders,
+          lastOrderDate: today,
+          historyText: newHist
+        }, { merge: true });
+
+        // Aktualizácia lokálneho prehľadu v aplikácii
+        updateLocalCustomerPoints(email, custName, delta, note, newPts);
+
+        document.getElementById("sc-points").textContent = newPts + " b";
+        document.getElementById("qr-points-delta").value = "";
+        toast(`✅ Zapísané (${sign}) pre ${custName}! Nový stav: ${newPts} bodov.`);
+      } catch (e) {
+        toast("⚠️ Nepodarilo sa zapísať body do Firebase.");
+      }
+    }
+
+    function updateLocalCustomerPoints(email, name, delta, note, newPts) {
+      const today = new Date().toISOString().slice(0, 10);
+      const extraCust = JSON.parse(localStorage.getItem("yd_extra_customers") || "[]");
+      const existingIdx = extraCust.findIndex((c) => (c.email || "").toLowerCase() === email);
+      if (existingIdx >= 0) {
+        extraCust[existingIdx].loyalty_points = newPts;
+        if (delta > 0) {
+          extraCust[existingIdx].total_spent_eur += delta;
+          extraCust[existingIdx].orders_count += 1;
+        }
+        extraCust[existingIdx].history.unshift(`${today}: ${note} (${delta > 0 ? "+" + delta : delta} b)`);
+      } else {
+        const baseMatch = BASE_CUSTOMERS.find((c) => (c.email || "").toLowerCase() === email);
+        if (baseMatch) {
+          baseMatch.loyalty_points = newPts;
+          if (delta > 0) {
+            baseMatch.total_spent_eur += delta;
+            baseMatch.orders_count += 1;
+          }
+          baseMatch.history.unshift(`${today}: ${note} (${delta > 0 ? "+" + delta : delta} b)`);
+        } else {
+          extraCust.unshift({
+            name: name,
+            email: email,
+            phone: "",
+            city: "Vernostný klub",
+            orders_count: 1,
+            total_spent_eur: Math.max(0, delta),
+            loyalty_points: newPts,
+            last_order_date: today,
+            history: [`${today}: ${note} (${delta > 0 ? "+" + delta : delta} b)`]
+          });
+        }
+      }
+      localStorage.setItem("yd_extra_customers", JSON.stringify(extraCust));
+      renderCustomers();
+    }
+
     function getCustomers() {
       const extra = JSON.parse(localStorage.getItem("yd_extra_customers") || "[]");
       return [...extra, ...BASE_CUSTOMERS];
@@ -536,6 +888,8 @@
       const el = document.getElementById("customers-list");
       el.innerHTML = list.map((c) => {
         const cleanPhone = (c.phone || "").replace(/[^0-9]/g, "");
+        const safeEmail = (c.email || "").replace(/'/g, "");
+        const safeName = (c.name || "").replace(/'/g, "");
         return `
           <div class="cust-item">
             <div class="cust-top">
@@ -548,7 +902,8 @@
             <div style="font-size:12px;color:var(--text);margin-top:2px;">
               ${(c.history || []).map((h) => `<div>• ${h}</div>`).join("")}
             </div>
-            <div style="display:flex;gap:8px;margin-top:4px;">
+            <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;">
+              ${safeEmail ? `<button class="btn btn-amber" style="padding:6px 10px;font-size:12px;" onclick="selectCustomerForLoyalty('${safeEmail}', '${safeName}')">⭐ Pripísať / Upraviť body</button>` : ""}
               ${cleanPhone ? `<a href="https://wa.me/${cleanPhone}" target="_blank" class="btn" style="padding:6px 10px;font-size:12px;">💬 WhatsApp</a>` : ""}
               ${cleanPhone ? `<a href="tel:+${cleanPhone}" class="btn" style="padding:6px 10px;font-size:12px;">📞 Zavolať</a>` : ""}
             </div>
@@ -557,16 +912,17 @@
       }).join("");
     }
 
-    function addManualCustomer() {
+    async function addManualCustomer() {
       const name = document.getElementById("nc-name").value.trim();
       const phone = document.getElementById("nc-phone").value.trim();
-      const email = document.getElementById("nc-email").value.trim();
+      const email = document.getElementById("nc-email").value.trim().toLowerCase();
       const price = parseFloat(document.getElementById("nc-price").value || "0");
       const service = document.getElementById("nc-service").value.trim() || "Detailing / Čistenie";
       if (!name) {
         toast("Zadajte meno zákazníka.");
         return;
       }
+      const pts = Math.round(price);
       const today = new Date().toISOString().slice(0, 10);
       const extraCust = JSON.parse(localStorage.getItem("yd_extra_customers") || "[]");
       extraCust.unshift({
@@ -576,7 +932,7 @@
         city: "Prevádzka / Door-to-Door",
         orders_count: 1,
         total_spent_eur: price,
-        loyalty_points: Math.round(price),
+        loyalty_points: pts,
         last_order_date: today,
         history: [`${today}: ${service} (${price.toFixed(2)} € - Dokončené)`]
       });
@@ -597,13 +953,30 @@
       });
       localStorage.setItem("yd_extra_orders", JSON.stringify(extraOrd));
 
+      // Ak je zadaný e-mail, rovno zapíšeme body aj do Firebase Vernostného Klubu!
+      if (email && db && pts > 0) {
+        try {
+          const userRef = db.collection("customers").doc(email);
+          const doc = await userRef.get();
+          const curPts = doc.exists ? Number(doc.data().points || 0) : 0;
+          await userRef.set({
+            email,
+            name,
+            phone,
+            points: curPts + pts,
+            ordersCount: (doc.exists ? Number(doc.data().ordersCount || 0) : 0) + 1,
+            historyText: `${today}: ${service} (+${pts} b)`
+          }, { merge: true });
+        } catch (e) {}
+      }
+
       document.getElementById("nc-name").value = "";
       document.getElementById("nc-phone").value = "";
       document.getElementById("nc-email").value = "";
       document.getElementById("nc-price").value = "";
       document.getElementById("nc-service").value = "";
       renderCustomers();
-      toast("✅ Zákazník bol pridaný do tabuľky!");
+      toast("✅ Zákazník a vernostné body boli uložené!");
     }
 
     function triggerCsvDownload(filename, rows) {
@@ -699,7 +1072,7 @@
       t.textContent = msg;
       t.classList.add("show");
       clearTimeout(window._tt);
-      window._tt = setTimeout(() => t.classList.remove("show"), 2600);
+      window._tt = setTimeout(() => t.classList.remove("show"), 2800);
     }
 
     function openTab(id, btn) {
