@@ -2,9 +2,16 @@ name: Yankee Drive – Denný Report & Synchronizácia Tabuľky Zákazníkov (20
 
 on:
   schedule:
-    # Spúšťa sa o 18:00 UTC a 19:00 UTC (skript overí presne 20:00 v Europe/Bratislava pre letný aj zimný čas)
-    - cron: '0 18 * * *'
+    # GitHub cron beží v UTC. Na Slovensku je zimný čas (CET = UTC+1).
+    # 20:00 Europe/Bratislava = 19:00 UTC.
+    # Spúšťame každých 15 minút medzi 18:30 a 20:30 UTC, aby sme eliminovali oneskorenie GitHub Actions serverov.
+    - cron: '30 18 * * *'
+    - cron: '45 18 * * *'
     - cron: '0 19 * * *'
+    - cron: '15 19 * * *'
+    - cron: '30 19 * * *'
+    - cron: '45 19 * * *'
+    - cron: '0 20 * * *'
   workflow_dispatch:
 
 permissions:
@@ -45,22 +52,38 @@ jobs:
         run: |
           python3 - << 'EOF'
           import os, subprocess, sys
+          from pathlib import Path
           from datetime import datetime
           from zoneinfo import ZoneInfo
 
           now_sk = datetime.now(ZoneInfo("Europe/Bratislava"))
           event = os.environ.get("EVENT_NAME", "")
+          today_str = now_sk.strftime("%Y-%m-%d")
           print(f"Aktuálny čas na Slovensku: {now_sk.strftime('%Y-%m-%d %H:%M:%S %Z')} (event={event})")
 
-          if event == "schedule" and now_sk.hour != 20:
-              print("Preskakujem beh (iný posun letného/zimného času, čakám na 20:00 Europe/Bratislava).")
-              sys.exit(0)
+          # Marker súbor pre zabránenie duplicitnému odoslaniu v ten istý deň
+          marker_file = Path(f".report_sent_{today_str}")
+
+          if event == "schedule":
+              # Ak už bol report dnes odoslaný, ukončíme
+              if marker_file.exists():
+                  print(f"Denný report pre dnešný deň ({today_str}) už bol úspešne odoslaný.")
+                  sys.exit(0)
+              # Ak je čas pred 19:55 alebo po 23:00, preskočíme
+              if now_sk.hour < 19 or (now_sk.hour == 19 and now_sk.minute < 55) or now_sk.hour >= 23:
+                  print("Čakám na 20:00 Europe/Bratislava.")
+                  sys.exit(0)
+
+          print("Spúšťam dennú synchronizáciu a odoslanie reportu...")
 
           # 1. Aktualizácia Excel/CSV tabuľky zákazníkov a objednávok z Welcomio
           subprocess.run(["python3", "tools/export_customers.py", "--output-dir", "."])
 
           # 2. Odoslanie denného reportu na servis@yankeedrive.sk
           res = subprocess.run(["python3", "tools/yankee_briefing.py", "--send-email", "--to", "servis@yankeedrive.sk"])
+          if res.returncode == 0:
+              marker_file.write_text(f"Sent at {now_sk.isoformat()}", encoding="utf-8")
+              print("Denný report úspešne odoslaný a zaznamenaný.")
           sys.exit(res.returncode)
           EOF
 
@@ -68,5 +91,5 @@ jobs:
         run: |
           git config user.name "Yankee Drive AI Bot"
           git config user.email "servis@yankeedrive.sk"
-          git add yankee_drive_zakaznici.csv yankee_drive_objednavky.csv customers_data.json || true
-          git diff --staged --quiet || (git commit -m "Auto-update: Tabuľka zákazníkov a objednávok" && git push)
+          git add yankee_drive_zakaznici.csv yankee_drive_objednavky.csv customers_data.json .report_sent_* || true
+          git diff --staged --quiet || (git commit -m "Auto-update: Tabuľka zákazníkov a záznam reportu" && git push)
