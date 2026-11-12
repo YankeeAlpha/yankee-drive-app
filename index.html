@@ -2,20 +2,24 @@
 <html lang="sk">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="description" content="Interná aplikácia Yankee Drive pre obsluhu – vernostné body, zákazníci, šablóny správ a kalkulačka." />
   <meta name="theme-color" content="#0c0d10" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Yankee Drive" />
-  <title>Yankee Drive – Mobilný & PC Asistent</title>
+  <title>Yankee Drive – Firemný Asistent</title>
   <link rel="manifest" href="./manifest.json" />
   <link rel="icon" type="image/svg+xml" href="./icon.svg" />
-  <link rel="apple-touch-icon" href="./icon.svg" />
-  <!-- Firebase SDK pre živé prepojenie s Vernostným Klubom -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
-  <!-- HTML5 QR Code Scanner pre kameru mobilu/PC -->
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon-180.png" />
+  <!-- Knižnice sú uložené priamo v repe (vendor/) – bez závislosti na cudzích CDN, fungujú aj offline -->
+  <script src="./vendor/firebase-app-compat.js" defer></script>
+  <script src="./vendor/firebase-auth-compat.js" defer></script>
+  <script src="./vendor/firebase-firestore-compat.js" defer></script>
+  <script src="./js/firebase-config.js" defer></script>
   <style>
     :root {
       --bg: #0c0d10;
@@ -310,32 +314,42 @@
       white-space: nowrap;
     }
     .toast.show { display: block; }
+    .auth-label { font-size: 12px; font-weight: 700; color: var(--muted); text-align: left; display: block; margin-bottom: -10px; }
+    .btn-link { background: none; border: none; color: var(--muted); font-size: 13px; text-decoration: underline; cursor: pointer; padding: 4px; }
+    .btn:disabled { opacity: 0.6; cursor: wait; }
+    .btn:focus-visible, .chip-btn:focus-visible, .nav-item:focus-visible, .input:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
   </style>
 </head>
 <body>
 
-  <div id="pin-overlay">
+  <div id="pin-overlay" role="dialog" aria-modal="true" aria-labelledby="auth-title">
     <div class="pin-card">
-      <img src="logo_yd.png" alt="Yankee Drive" class="logo-img-box" onerror="this.style.display='none'" />
+      <img src="logo_yd_small.webp" alt="Yankee Drive" class="logo-img-box" width="104" height="70" onerror="this.style.display='none'" />
       <div>
-        <h2 style="font-size:18px;font-weight:800;">Yankee Drive Interný</h2>
-        <p style="font-size:13px;color:var(--muted);margin-top:4px;">Zadajte firemný PIN kód pre odomknutie aplikácie</p>
+        <h1 id="auth-title" style="font-size:18px;font-weight:800;">Yankee Drive – Interný</h1>
+        <p style="font-size:13px;color:var(--muted);margin-top:4px;">Prihláste sa účtom obsluhy</p>
       </div>
-      <input id="pin-field" type="password" inputmode="numeric" maxlength="6" class="pin-input" placeholder="••••" oninput="checkPinInput()" />
-      <button class="btn btn-amber" onclick="unlockWithPin()">Odomknúť aplikáciu</button>
-      <p id="pin-err" style="font-size:12px;color:#ef4444;display:none;">Nesprávny PIN kód. Skúste znova.</p>
+      <label for="auth-email" class="auth-label">E-mail</label>
+      <input id="auth-email" type="email" autocomplete="username" class="input" placeholder="napr. obsluha@yankeedrive.sk" />
+      <label for="auth-pass" class="auth-label">Heslo</label>
+      <input id="auth-pass" type="password" autocomplete="current-password" class="input" placeholder="Heslo" onkeydown="if(event.key==='Enter'){signInStaff();}" />
+      <button id="auth-btn" class="btn btn-amber" onclick="signInStaff()">Prihlásiť sa</button>
+      <button class="btn-link" onclick="resetStaffPassword()">Zabudnuté heslo</button>
+      <p id="auth-err" role="alert" style="font-size:12px;color:#ef4444;display:none;"></p>
+      <p id="auth-info" role="status" style="font-size:12px;color:var(--green);display:none;"></p>
     </div>
   </div>
 
   <header class="topbar">
     <div class="topbar-left">
-      <img src="logo_yd.png" alt="YD" class="mini-logo-img" onerror="this.style.display='none'" />
+      <img src="logo_yd_small.webp" alt="" class="mini-logo-img" width="48" height="32" onerror="this.style.display='none'" />
       <div>
         <div style="font-size:15px;font-weight:800;">Yankee Drive</div>
-        <div style="font-size:12px;color:var(--muted);">Firemný Asistent • QR Skener & Zákazníci</div>
+        <div id="staff-name" style="font-size:12px;color:var(--muted);">Firemný Asistent</div>
       </div>
     </div>
-    <button class="btn" style="padding:7px 11px;font-size:12px;" onclick="lockApp()">🔒 Zamknúť</button>
+    <button class="btn" style="padding:7px 11px;font-size:12px;" onclick="lockApp()">🔒 Odhlásiť</button>
   </header>
 
   <div id="toast" class="toast"></div>
@@ -357,7 +371,7 @@
           </button>
           <label class="btn" style="cursor:pointer;">
             🖼️ Skenovať QR z fotky / galérie
-            <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="scanQrFromFile(this)" />
+            <input type="file" accept="image/*" capture="environment" class="sr-only" aria-label="Vybrať fotku s QR kódom" onchange="scanQrFromFile(this)" />
           </label>
         </div>
 
@@ -366,7 +380,7 @@
 
         <!-- Vyhľadanie / načítaný účet zákazníka -->
         <div style="display:flex;gap:8px;">
-          <input id="qr-email-input" type="email" class="input" placeholder="Alebo zadajte e-mail zákazníka (napr. mirik.misovic@gmail.com)" />
+          <input id="qr-email-input" type="email" class="input" aria-label="Alebo zadajte e-mail zákazníka (napr. meno@gmail.com)" placeholder="Alebo zadajte e-mail zákazníka (napr. meno@gmail.com)" />
           <button class="btn" style="white-space:nowrap;" onclick="loadLoyaltyAccountByInput()">🔍 Načítať kartu</button>
         </div>
 
@@ -396,44 +410,53 @@
         </div>
 
         <div class="grid-2">
-          <input id="qr-points-delta" type="number" class="input" placeholder="Počet bodov (napr. 80 alebo -100)" />
-          <input id="qr-points-note" type="text" class="input" placeholder="Poznámka (napr. Yankee Štandard)" />
+          <input id="qr-points-delta" type="number" class="input" aria-label="Počet bodov (napr. 80 alebo -100)" placeholder="Počet bodov (napr. 80 alebo -100)" />
+          <input id="qr-points-note" type="text" class="input" aria-label="Poznámka (napr. Yankee Štandard)" placeholder="Poznámka (napr. Yankee Štandard)" />
         </div>
 
         <button class="btn btn-green" onclick="savePointsToFirebase()">
           ✅ Zapísať body rovno na vernostnú kartu zákazníka
         </button>
+
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-top:4px;">🎟️ Overenie poukazu zákazníka:</div>
+        <div style="display:flex;gap:8px;">
+          <input id="coupon-code" type="text" class="input" aria-label="Kód poukazu (napr. YD-UMY-7K3F9Q)" placeholder="Kód poukazu (napr. YD-UMY-7K3F9Q)" style="text-transform:uppercase;" />
+          <button class="btn" style="white-space:nowrap;" onclick="checkCoupon()">🔍 Overiť</button>
+        </div>
+        <div id="coupon-result" role="status" style="font-size:13px;"></div>
+        <button id="coupon-use-btn" class="btn btn-amber" style="display:none;" onclick="useCoupon()">✅ Označiť poukaz ako použitý</button>
       </div>
 
       <!-- DATABÁZA ZÁKAZNÍKOV & STIAHNUTIE DO EXCELU -->
       <div class="card">
         <div>
           <div class="card-title">👥 Databáza zákazníkov & Stiahnutie do PC (Excel)</div>
-          <div class="card-sub">Automaticky synchronizované z Welcomio objednávok, rezervácií a Vernostného Klubu</div>
+          <div class="card-sub">Synchronizované z Welcomio a Vernostného klubu (načíta sa po prihlásení obsluhy)</div>
         </div>
 
         <div class="grid-2 grid-2-mobile-1">
-          <button class="btn btn-amber" onclick="downloadCustomersCsv()">📥 Stiahnuť Zákazníkov (.CSV pre Excel)</button>
-          <button class="btn" onclick="downloadOrdersCsv()">📥 Stiahnuť Všetky Objednávky (.CSV)</button>
+          <button class="btn btn-amber" onclick="downloadCustomersCsv()">📥 Stiahnuť zákazníkov (CSV pre Excel)</button>
+          <button class="btn" onclick="downloadOrdersCsv()">📥 Stiahnuť všetky objednávky (CSV)</button>
         </div>
 
+        <input id="cust-search" type="search" class="input" aria-label="Hľadať zákazníka (meno, e-mail, telefón)" placeholder="Hľadať zákazníka (meno, e-mail, telefón)" oninput="renderCustomers()" />
         <div id="customers-list" style="display:flex;flex-direction:column;gap:10px;"></div>
       </div>
 
       <div class="card">
         <div>
           <div class="card-title">➕ Pridať nového zákazníka / čistenie do tabuľky</div>
-          <div class="card-sub">Pre telefonické alebo osobné objednávky mimo webu (automaticky zapíše aj vernostné body)</div>
+          <div class="card-sub">Pre telefonické alebo osobné objednávky mimo webu. S e-mailom sa automaticky pripíšu aj vernostné body.</div>
         </div>
         <div class="grid-2">
-          <input id="nc-name" type="text" class="input" placeholder="Meno a priezvisko" />
-          <input id="nc-phone" type="tel" class="input" placeholder="Telefón (+421...)" />
+          <input id="nc-name" type="text" class="input" aria-label="Meno a priezvisko" placeholder="Meno a priezvisko" />
+          <input id="nc-phone" type="tel" class="input" aria-label="Telefón (+421...)" placeholder="Telefón (+421...)" />
         </div>
         <div class="grid-2">
-          <input id="nc-email" type="email" class="input" placeholder="E-mail (pre vernostnú kartu)" />
-          <input id="nc-price" type="number" class="input" placeholder="Suma (€) napr. 80" />
+          <input id="nc-email" type="email" class="input" aria-label="E-mail (pre vernostnú kartu)" placeholder="E-mail (pre vernostnú kartu)" />
+          <input id="nc-price" type="number" class="input" aria-label="Suma (€) napr. 80" placeholder="Suma (€) napr. 80" />
         </div>
-        <input id="nc-service" type="text" class="input" placeholder="Služba / Produkt (napr. Yankee Štandard + Ozón)" />
+        <input id="nc-service" type="text" class="input" aria-label="Služba / Produkt (napr. Yankee Štandard + Ozón)" placeholder="Služba / Produkt (napr. Yankee Štandard + Ozón)" />
         <button class="btn btn-amber" onclick="addManualCustomer()">💾 Pridať do zoznamu + Pripísať body</button>
       </div>
     </section>
@@ -446,7 +469,7 @@
           <div class="card-sub">Vyberte situáciu, zadajte číslo zákazníka a jedným ťuknutím odošlite správu</div>
         </div>
 
-        <input id="wa-phone" type="tel" class="input" placeholder="Telefón zákazníka (napr. 0905 123 456)" />
+        <input id="wa-phone" type="tel" class="input" aria-label="Telefón zákazníka (napr. 0905 123 456)" placeholder="Telefón zákazníka (napr. 0905 123 456)" />
 
         <div class="chip-grid">
           <button class="chip-btn selected" onclick="setWaTpl('ready', this)">🚗 Auto je hotové</button>
@@ -455,7 +478,7 @@
           <button class="chip-btn" onclick="setWaTpl('pickup', this)">🔑 Vyzdvihnutie auta</button>
         </div>
 
-        <textarea id="wa-msg" class="textarea">Dobrý deň, tu je Yankee Drive Trebišov. Vaše vozidlo je kompletne vyčistené, vyleštené a pripravené na odovzdanie. 🚗✨ V prípade otázok sme Vám k dispozícii na +421 940 247 133.</textarea>
+        <textarea id="wa-msg" class="textarea" aria-label="Text WhatsApp správy">Dobrý deň, tu je Yankee Drive Trebišov. Vaše vozidlo je kompletne vyčistené, vyleštené a pripravené na odovzdanie. 🚗✨ V prípade otázok sme Vám k dispozícii na +421 940 247 133.</textarea>
 
         <button class="btn btn-amber" onclick="openWhatsApp()">💬 Otvoriť a odoslať cez WhatsApp ↗</button>
         <button class="btn" onclick="copyById('wa-msg')">📋 Kopírovať text správy</button>
@@ -493,7 +516,7 @@
           <span id="calc-total" style="font-size:22px;font-weight:900;color:var(--amber);">45 €</span>
         </div>
 
-        <textarea id="calc-summary" class="textarea" style="min-height:110px;"></textarea>
+        <textarea id="calc-summary" aria-label="Text cenovej ponuky" class="textarea" style="min-height:110px;"></textarea>
 
         <div class="grid-2">
           <button class="btn btn-amber" onclick="sendCalcToWa()">💬 Poslať na WhatsApp</button>
@@ -517,9 +540,9 @@
           <button class="chip-btn" onclick="setMailTpl('tepovanie', this)">🛋️ Tepovanie & Ozón</button>
         </div>
 
-        <input id="m-to" type="email" class="input" placeholder="E-mail zákazníka (voliteľné)" />
-        <input id="m-subj" type="text" class="input" value="Cenová ponuka a rezervácia termínu – Yankee Drive" />
-        <textarea id="m-body" class="textarea"></textarea>
+        <input id="m-to" type="email" class="input" aria-label="E-mail zákazníka (voliteľné)" placeholder="E-mail zákazníka (voliteľné)" />
+        <input id="m-subj" type="text" class="input" aria-label="Predmet e-mailu" value="Cenová ponuka a rezervácia termínu – Yankee Drive" />
+        <textarea id="m-body" class="textarea" aria-label="Text e-mailu"></textarea>
 
         <div class="grid-2">
           <button class="btn btn-amber" onclick="openMailApp()">✉️ Otvoriť v Mail apke</button>
@@ -531,13 +554,13 @@
         <div>
           <div class="card-title">⭐ Odpoveď na Google Recenziu (Lokálne SEO)</div>
         </div>
-        <input id="rev-customer" type="text" class="input" placeholder="Meno zákazníka (napr. Peter)" oninput="updateReviewText()" />
-        <select id="rev-service" class="select" onchange="updateReviewText()">
+        <input id="rev-customer" type="text" class="input" aria-label="Meno zákazníka (napr. Peter)" placeholder="Meno zákazníka (napr. Peter)" oninput="updateReviewText()" />
+        <select id="rev-service" class="select" aria-label="Služba" onchange="updateReviewText()">
           <option value="refresh">Ručné umývanie & Yankee Refresh</option>
           <option value="standard">Hĺbkové tepovanie & Yankee Štandard</option>
           <option value="exclusive">Strojové leštenie laku & Yankee Exclusive</option>
         </select>
-        <textarea id="rev-text" class="textarea" style="min-height:100px;"></textarea>
+        <textarea id="rev-text" aria-label="Odpoveď na recenziu" class="textarea" style="min-height:100px;"></textarea>
         <button class="btn btn-amber" onclick="copyById('rev-text')">📋 Kopírovať odpoveď na recenziu</button>
       </div>
     </section>
@@ -558,103 +581,298 @@
     </section>
   </main>
 
-  <nav class="bottom-nav">
-    <button class="nav-item active" onclick="openTab('customers', this)">
-      <span class="nav-icon">📷</span>
+  <nav class="bottom-nav" aria-label="Hlavná navigácia">
+    <button class="nav-item active" aria-current="page" onclick="openTab('customers', this)">
+      <span class="nav-icon" aria-hidden="true">📷</span>
       <span>QR & Zákazníci</span>
     </button>
     <button class="nav-item" onclick="openTab('wa', this)">
-      <span class="nav-icon">💬</span>
+      <span class="nav-icon" aria-hidden="true">💬</span>
       <span>WhatsApp</span>
     </button>
     <button class="nav-item" onclick="openTab('calc', this)">
-      <span class="nav-icon">🧮</span>
+      <span class="nav-icon" aria-hidden="true">🧮</span>
       <span>Kalkulačka</span>
     </button>
     <button class="nav-item" onclick="openTab('mail', this)">
-      <span class="nav-icon">✉️</span>
+      <span class="nav-icon" aria-hidden="true">✉️</span>
       <span>Maily & SEO</span>
     </button>
     <button class="nav-item" onclick="openTab('links', this)">
-      <span class="nav-icon">⚙️</span>
+      <span class="nav-icon" aria-hidden="true">⚙️</span>
       <span>Systémy</span>
     </button>
   </nav>
 
   <script>
-    const DEFAULT_PIN = "0750";
-
-    // Firebase inicializácia (zdieľaná s Vernostným Klubom)
-    const firebaseConfig = {
-      apiKey: "AIzaSyBym7aue9Fy0oIU00YpwcFQ1j20PO6-VMA",
-      authDomain: "yankee-drive-loyality-card.firebaseapp.com",
-      databaseURL: "https://yankee-drive-loyality-card-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "yankee-drive-loyality-card",
-      storageBucket: "yankee-drive-loyality-card.firebasestorage.app",
-      messagingSenderId: "1071364286187",
-      appId: "1:1071364286187:web:f28668685472ad5fbf40ae",
-      measurementId: "G-TCWH37NLM3"
-    };
+    window.addEventListener("DOMContentLoaded", function () {
+    // =====================================================================
+    // Yankee Drive – Firemný Asistent
+    // Prístup: Firebase Authentication (účet obsluhy) + Firestore pravidlá.
+    // Údaje zákazníkov sa načítavajú až po prihlásení a nie sú v zdrojovom kóde.
+    // =====================================================================
+    const esc = window.ydEscape;
+    let auth = null;
     let db = null;
+    let currentStaff = null;
+    let customers = [];
+    let orders = [];
+
     try {
-      firebase.initializeApp(firebaseConfig);
+      firebase.initializeApp(window.YD_FIREBASE_CONFIG);
+      auth = firebase.auth();
       db = firebase.firestore();
-    } catch (e) {}
+      window.ydConnectEmulators(auth, db);
+    } catch (e) {
+      console.error("Firebase init error", e);
+    }
 
-    const BASE_CUSTOMERS = [
-      {
-        name: "Miroslav Mišovic",
-        email: "mirik.misovic@gmail.com",
-        phone: "+421 949 052 726",
-        city: "Osobný odber",
-        orders_count: 3,
-        total_spent_eur: 124.20,
-        loyalty_points: 124,
-        last_order_date: "2026-08-20",
-        history: [
-          "2026-08-20: 1x Koch Chemie InsectOff 500ml, 1x Koch Chemie Green Star 1L (20.80 €)",
-          "2026-08-17: 1x Koch Chemie Colourlock Allround Textile Sealant (27.50 €)",
-          "2026-08-14: 1x Koch Chemie profi sada interiér, 1x Sada na čistenie okien (75.90 €)"
-        ]
-      },
-      {
-        name: "Bianka Bučková",
-        email: "zenuchova.bia@gmail.com",
-        phone: "+421 917 975 973",
-        city: "",
-        orders_count: 1,
-        total_spent_eur: 25.00,
-        loyalty_points: 25,
-        last_order_date: "2026-09-09",
-        history: [
-          "2026-09-09: 1x Darčekový poukaz Yankee DriveCard25 (25.00 € - Odoslané)"
-        ]
-      },
-      {
-        name: "Bystrík Grotkovský",
-        email: "grotko1234@gmail.com",
-        phone: "+421 950 482 933",
-        city: "Spišská Belá (Z-BOX SNP 1)",
-        orders_count: 1,
-        total_spent_eur: 23.00,
-        loyalty_points: 23,
-        last_order_date: "2026-09-13",
-        history: [
-          "2026-09-13: 1x Koch Chemie Sada na čistenie okien bez šmúh (23.00 € - Odoslané)"
-        ]
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch((e) => console.warn("SW registrácia zlyhala", e));
+      });
+    }
+
+    function todayStr() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }
+
+    function stampStr() {
+      const d = new Date();
+      const p = (n) => String(n).padStart(2, "0");
+      return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+    }
+
+    function setText(id, value) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    }
+
+    // ================= PRIHLÁSENIE OBSLUHY =================
+    function authErrorText(err) {
+      const code = (err && err.code) || "";
+      const map = {
+        "auth/invalid-email": "Neplatný e-mail.",
+        "auth/user-disabled": "Tento účet je zablokovaný.",
+        "auth/user-not-found": "Nesprávny e-mail alebo heslo.",
+        "auth/wrong-password": "Nesprávny e-mail alebo heslo.",
+        "auth/invalid-credential": "Nesprávny e-mail alebo heslo.",
+        "auth/invalid-login-credentials": "Nesprávny e-mail alebo heslo.",
+        "auth/too-many-requests": "Príliš veľa pokusov. Skúste to znova o pár minút.",
+        "auth/network-request-failed": "Chýba pripojenie na internet."
+      };
+      return map[code] || "Prihlásenie sa nepodarilo. Skúste to znova.";
+    }
+
+    function showLogin(message) {
+      document.getElementById("pin-overlay").classList.remove("hidden");
+      const errEl = document.getElementById("auth-err");
+      if (message) {
+        errEl.textContent = message;
+        errEl.style.display = "block";
+      } else {
+        errEl.style.display = "none";
       }
-    ];
+    }
 
-    const BASE_ORDERS = [
-      { type: "E-shop objednávka", number: "969504", date: "2026-09-13", name: "Bystrík Grotkovský", email: "grotko1234@gmail.com", phone: "+421 950 482 933", city: "Spišská Belá", items: "1x Koch Chemie Sada na čistenie okien bez šmúh", total_eur: 23.00, status: "Odoslané" },
-      { type: "E-shop objednávka", number: "369943", date: "2026-09-09", name: "Bianka Bučková", email: "zenuchova.bia@gmail.com", phone: "+421 917 975 973", city: "", items: "1x Yankee DriveCard25", total_eur: 25.00, status: "Odoslané" },
-      { type: "E-shop objednávka", number: "253995", date: "2026-08-20", name: "Miroslav Mišovic", email: "mirik.misovic@gmail.com", phone: "+421 949 052 726", city: "Osobný odber", items: "1x Koch Chemie InsectOff 500ml, 1x Koch Chemie Green Star 1L", total_eur: 20.80, status: "Ukončené" },
-      { type: "E-shop objednávka", number: "685669", date: "2026-08-17", name: "Miroslav Mišovic", email: "mirik.misovic@gmail.com", phone: "+421 949 052 726", city: "Osobný odber", items: "1x Koch Chemie Colourlock Allround Textile Sealant", total_eur: 27.50, status: "Ukončené" },
-      { type: "E-shop objednávka", number: "942757", date: "2026-08-14", name: "Miroslav Mišovic", email: "mirik.misovic@gmail.com", phone: "+421 949 052 726", city: "Osobný odber", items: "1x Koch Chemie profi sada interiér, 1x Sada na čistenie okien", total_eur: 75.90, status: "Ukončené" },
-      { type: "E-shop objednávka", number: "482776", date: "2026-09-14", name: "Bystrík Grotkovský", email: "grotko1234@gmail.com", phone: "+421 950 482 933", city: "Spišská Belá", items: "1x Koch Chemie Sada na čistenie okien bez šmúh", total_eur: 24.40, status: "Zrušené" }
-    ];
+    function hideLogin() {
+      document.getElementById("pin-overlay").classList.add("hidden");
+      document.getElementById("auth-err").style.display = "none";
+    }
 
-    // ================= QR SKENER & FIREBASE BODY =================
+    async function signInStaff() {
+      const email = document.getElementById("auth-email").value.trim();
+      const pass = document.getElementById("auth-pass").value;
+      if (!email || !pass) {
+        showLogin("Zadajte e-mail aj heslo.");
+        return;
+      }
+      const btn = document.getElementById("auth-btn");
+      btn.disabled = true;
+      try {
+        await auth.signInWithEmailAndPassword(email, pass);
+        document.getElementById("auth-pass").value = "";
+      } catch (e) {
+        showLogin(authErrorText(e));
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function resetStaffPassword() {
+      const email = document.getElementById("auth-email").value.trim();
+      if (!email) {
+        showLogin("Najprv zadajte e-mail účtu obsluhy.");
+        return;
+      }
+      try {
+        await auth.sendPasswordResetEmail(email);
+        setText("auth-info", "Ak účet existuje, poslali sme odkaz na zmenu hesla na " + email + ".");
+        document.getElementById("auth-info").style.display = "block";
+      } catch (e) {
+        showLogin(authErrorText(e));
+      }
+    }
+
+    async function lockApp() {
+      try {
+        if (auth) await auth.signOut();
+      } catch (e) {
+        console.warn(e);
+      }
+      clearData();
+      showLogin();
+    }
+
+    function clearData() {
+      currentStaff = null;
+      customers = [];
+      orders = [];
+      renderCustomers();
+      document.getElementById("scanned-customer-box").style.display = "none";
+    }
+
+    if (auth) {
+      auth.onAuthStateChanged(async (user) => {
+        if (!user) {
+          clearData();
+          showLogin();
+          return;
+        }
+        try {
+          const staffDoc = await db.collection("staff").doc(user.uid).get();
+          if (!staffDoc.exists) {
+            await auth.signOut();
+            showLogin("Tento účet nemá oprávnenie obsluhy. Požiadajte majiteľa o pridanie.");
+            return;
+          }
+          const s = staffDoc.data() || {};
+          currentStaff = { uid: user.uid, email: user.email || "", name: s.name || user.email || "Obsluha" };
+          setText("staff-name", "Prihlásený: " + currentStaff.name);
+          hideLogin();
+          await loadData();
+        } catch (e) {
+          if (!navigator.onLine) {
+            // Offline: kalkulačka a šablóny fungujú, údaje zákazníkov nie.
+            hideLogin();
+            setText("staff-name", "Offline režim");
+            toast("📴 Ste offline – údaje zákazníkov nie sú dostupné, kalkulačka a šablóny fungujú.");
+          } else {
+            showLogin("Nepodarilo sa overiť oprávnenie obsluhy. Skúste to znova.");
+          }
+        }
+      });
+    } else {
+      showLogin("Aplikáciu sa nepodarilo načítať. Obnovte stránku.");
+    }
+
+    // ================= NAČÍTANIE ÚDAJOV (len pre obsluhu) =================
+    async function loadData() {
+      try {
+        const [custSnap, ordSnap] = await Promise.all([
+          db.collection("customers").get(),
+          db.collection("orders").get()
+        ]);
+        customers = custSnap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+        orders = ordSnap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+        customers.sort((a, b) => String(b.lastOrderDate || "").localeCompare(String(a.lastOrderDate || "")));
+        orders.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+        renderCustomers();
+      } catch (e) {
+        console.error(e);
+        toast("⚠️ Nepodarilo sa načítať zákazníkov z databázy.");
+      }
+    }
+
+    function customerHistory(c) {
+      const parts = [];
+      if (c.historyText) parts.push(...String(c.historyText).split(" | "));
+      if (c.welcomioHistoryText) parts.push(...String(c.welcomioHistoryText).split(" | "));
+      return parts.filter(Boolean);
+    }
+
+    function renderCustomers() {
+      const el = document.getElementById("customers-list");
+      if (!el) return;
+      el.textContent = "";
+      const q = (document.getElementById("cust-search") || { value: "" }).value.trim().toLowerCase();
+      const list = customers.filter((c) => {
+        if (!q) return true;
+        return [c.name, c.email, c.phone, c.city].some((v) => String(v || "").toLowerCase().includes(q));
+      });
+      if (!currentStaff) return;
+      if (list.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "card-sub";
+        empty.textContent = q ? "Žiadny zákazník nezodpovedá hľadaniu." : "Databáza zákazníkov je zatiaľ prázdna.";
+        el.appendChild(empty);
+        return;
+      }
+      list.forEach((c) => {
+        const item = document.createElement("div");
+        item.className = "cust-item";
+
+        const top = document.createElement("div");
+        top.className = "cust-top";
+        const nameEl = document.createElement("strong");
+        nameEl.style.fontSize = "15px";
+        nameEl.textContent = c.name || c.email || "Zákazník";
+        const badge = document.createElement("span");
+        badge.className = "badge-pts";
+        badge.textContent = `⭐ ${Number(c.points || 0)} bodov (${Number(c.totalSpentEur || 0).toFixed(2)} €)`;
+        top.append(nameEl, badge);
+
+        const info = document.createElement("div");
+        info.style.cssText = "font-size:12px;color:var(--muted);";
+        info.textContent = `📧 ${c.email || "—"} • 📞 ${c.phone || "—"}${c.city ? " • 📍 " + c.city : ""}`;
+
+        const hist = document.createElement("div");
+        hist.style.cssText = "font-size:12px;color:var(--text);margin-top:2px;";
+        customerHistory(c).slice(0, 6).forEach((h) => {
+          const line = document.createElement("div");
+          line.textContent = "• " + h;
+          hist.appendChild(line);
+        });
+
+        const actions = document.createElement("div");
+        actions.style.cssText = "display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;";
+        if (c.email) {
+          const b = document.createElement("button");
+          b.className = "btn btn-amber";
+          b.style.cssText = "padding:6px 10px;font-size:12px;";
+          b.textContent = "⭐ Pripísať / Upraviť body";
+          b.addEventListener("click", () => selectCustomerForLoyalty(c.email, c.name));
+          actions.appendChild(b);
+        }
+        const cleanPhone = normalizePhone(c.phone);
+        if (cleanPhone) {
+          const wa = document.createElement("a");
+          wa.className = "btn";
+          wa.style.cssText = "padding:6px 10px;font-size:12px;";
+          wa.href = "https://wa.me/" + cleanPhone;
+          wa.target = "_blank";
+          wa.rel = "noopener";
+          wa.textContent = "💬 WhatsApp";
+          const tel = document.createElement("a");
+          tel.className = "btn";
+          tel.style.cssText = "padding:6px 10px;font-size:12px;";
+          tel.href = "tel:+" + cleanPhone;
+          tel.textContent = "📞 Zavolať";
+          actions.append(wa, tel);
+        }
+        item.append(top, info, hist, actions);
+        el.appendChild(item);
+      });
+    }
+
+    function normalizePhone(phone) {
+      let p = String(phone || "").replace(/[^0-9]/g, "");
+      if (p.startsWith("09")) p = "421" + p.slice(1);
+      return p;
+    }
+
+    // ================= QR SKENER & VERNOSTNÉ BODY =================
     let html5QrScanner = null;
     let isScanning = false;
 
@@ -666,25 +884,41 @@
       return raw.toLowerCase();
     }
 
+    // Knižnica skenera (≈370 KB) sa načíta až pri prvom použití.
+    let qrLibPromise = null;
+    function ensureQrLib() {
+      if (typeof Html5Qrcode !== "undefined") return Promise.resolve();
+      if (!qrLibPromise) {
+        qrLibPromise = new Promise((resolve, reject) => {
+          const sc = document.createElement("script");
+          sc.src = "./vendor/html5-qrcode.min.js";
+          sc.onload = resolve;
+          sc.onerror = () => { qrLibPromise = null; reject(new Error("QR_LIB")); };
+          document.head.appendChild(sc);
+        });
+      }
+      return qrLibPromise;
+    }
+
     async function toggleCameraScanner() {
       const readerEl = document.getElementById("qr-reader");
       const btn = document.getElementById("btn-start-scan");
-
+      try {
+        await ensureQrLib();
+      } catch (e) {
+        toast("⚠️ Skener sa nepodarilo načítať. Skontrolujte internet.");
+        return;
+      }
       if (isScanning && html5QrScanner) {
-        try {
-          await html5QrScanner.stop();
-        } catch (e) {}
+        try { await html5QrScanner.stop(); } catch (e) { console.warn(e); }
         isScanning = false;
         readerEl.style.display = "none";
         btn.textContent = "📷 Zapnúť kameru a načítať QR kód";
         return;
       }
-
       readerEl.style.display = "block";
       btn.textContent = "⏹️ Vypnúť kameru";
-      if (!html5QrScanner) {
-        html5QrScanner = new Html5Qrcode("qr-reader");
-      }
+      if (!html5QrScanner) html5QrScanner = new Html5Qrcode("qr-reader");
       try {
         isScanning = true;
         await html5QrScanner.start(
@@ -694,9 +928,7 @@
             const email = parseQrPayload(decodedText);
             document.getElementById("qr-email-input").value = email;
             toast("✅ QR kód načítaný: " + email);
-            try {
-              await html5QrScanner.stop();
-            } catch (e) {}
+            try { await html5QrScanner.stop(); } catch (e) { console.warn(e); }
             isScanning = false;
             readerEl.style.display = "none";
             btn.textContent = "📷 Zapnúť kameru a načítať QR kód";
@@ -714,12 +946,15 @@
 
     async function scanQrFromFile(inputEl) {
       if (!inputEl.files || !inputEl.files[0]) return;
-      const file = inputEl.files[0];
-      if (!html5QrScanner) {
-        html5QrScanner = new Html5Qrcode("qr-reader");
-      }
       try {
-        const decodedText = await html5QrScanner.scanFile(file, true);
+        await ensureQrLib();
+      } catch (e) {
+        toast("⚠️ Skener sa nepodarilo načítať. Skontrolujte internet.");
+        return;
+      }
+      if (!html5QrScanner) html5QrScanner = new Html5Qrcode("qr-reader");
+      try {
+        const decodedText = await html5QrScanner.scanFile(inputEl.files[0], true);
         const email = parseQrPayload(decodedText);
         document.getElementById("qr-email-input").value = email;
         toast("✅ QR kód z fotky načítaný: " + email);
@@ -744,38 +979,34 @@
       loadLoyaltyAccount(email, name);
     }
 
+    function requireStaff() {
+      if (!currentStaff || !db) {
+        toast("🔒 Najprv sa prihláste účtom obsluhy (a buďte online).");
+        return false;
+      }
+      return true;
+    }
+
     async function loadLoyaltyAccount(email, fallbackName) {
+      if (!requireStaff()) return;
       const box = document.getElementById("scanned-customer-box");
       box.style.display = "flex";
-      const localMatch = getCustomers().find((c) => (c.email || "").toLowerCase() === email.toLowerCase());
-
-      if (!db) {
-        document.getElementById("sc-name").textContent = fallbackName || (localMatch && localMatch.name) || email;
-        document.getElementById("sc-email").textContent = email;
-        document.getElementById("sc-points").textContent = ((localMatch && localMatch.loyalty_points) || 0) + " b";
-        return;
-      }
-
+      setText("sc-email", email);
       try {
         const doc = await db.collection("customers").doc(email).get();
         if (doc.exists) {
           const d = doc.data();
-          document.getElementById("sc-name").textContent = d.name || fallbackName || (localMatch && localMatch.name) || email;
-          document.getElementById("sc-email").textContent = email;
-          document.getElementById("sc-points").textContent = (d.points || 0) + " b";
-          document.getElementById("sc-coupon").textContent = d.lastCouponCode
-            ? `🎟️ Aktívny poukaz: ${d.lastCouponName || "Odmena"} (${d.lastCouponCode})`
-            : "";
+          setText("sc-name", d.name || fallbackName || email);
+          setText("sc-points", (Number(d.points || 0)) + " b");
+          setText("sc-coupon", d.lastCouponCode ? `🎟️ Posledný poukaz: ${d.lastCouponName || "Odmena"} (${d.lastCouponCode})` : "");
         } else {
-          const initPts = localMatch ? Number(localMatch.loyalty_points || 0) : 0;
-          const initName = fallbackName || (localMatch && localMatch.name) || email.split("@")[0];
-          document.getElementById("sc-name").textContent = initName;
-          document.getElementById("sc-email").textContent = email;
-          document.getElementById("sc-points").textContent = initPts + " b";
-          document.getElementById("sc-coupon").textContent = "Nová vernostná karta (vytvorí sa pri zápise bodov)";
+          setText("sc-name", fallbackName || email.split("@")[0]);
+          setText("sc-points", "0 b");
+          setText("sc-coupon", "Nová vernostná karta (vytvorí sa pri zápise bodov)");
         }
       } catch (e) {
-        toast("⚠️ Chyba pri načítaní Firebase karty.");
+        console.error(e);
+        toast("⚠️ Chyba pri načítaní vernostnej karty.");
       }
     }
 
@@ -784,204 +1015,192 @@
       document.getElementById("qr-points-note").value = note;
     }
 
+    // Zapíše zmenu bodov v transakcii + záznam do denníka pointsLog.
+    async function applyPointsChange(email, delta, note, extra) {
+      const ref = db.collection("customers").doc(email);
+      const logRef = db.collection("pointsLog").doc();
+      const today = todayStr();
+      return db.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        const data = snap.exists ? snap.data() : {};
+        const curPts = Number(data.points || 0);
+        if (delta < 0 && curPts + delta < 0) {
+          throw new Error("NOT_ENOUGH_POINTS");
+        }
+        const newPts = curPts + delta;
+        const sign = delta > 0 ? `+${delta} b` : `${delta} b`;
+        const prevHist = data.historyText || "";
+        const newHist = `${today}: ${note} (${sign})` + (prevHist ? " | " + prevHist : "");
+        const update = {
+          email: email,
+          name: (extra && extra.name) || data.name || email.split("@")[0],
+          points: newPts,
+          bonusPoints: Number(data.bonusPoints || 0) + (delta > 0 ? delta : 0),
+          redeemedPoints: Number(data.redeemedPoints || 0) + (delta < 0 ? -delta : 0),
+          historyText: newHist.slice(0, 5000),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedBy: currentStaff.email
+        };
+        if (delta > 0) {
+          update.ordersCount = Number(data.ordersCount || 0) + 1;
+          update.lastOrderDate = today;
+        }
+        if (extra && extra.phone && !data.phone) update.phone = extra.phone;
+        if (extra && extra.spentEur) update.totalSpentEur = Number(data.totalSpentEur || 0) + extra.spentEur;
+        tx.set(ref, update, { merge: true });
+        tx.set(logRef, {
+          email: email,
+          delta: delta,
+          note: note,
+          pointsAfter: newPts,
+          staffUid: currentStaff.uid,
+          staffEmail: currentStaff.email,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        return { newPts, name: update.name, sign };
+      });
+    }
+
     async function savePointsToFirebase() {
+      if (!requireStaff()) return;
       const email = document.getElementById("qr-email-input").value.trim().toLowerCase();
       const delta = parseInt(document.getElementById("qr-points-delta").value || "0", 10);
       const note = document.getElementById("qr-points-note").value.trim() || "Čistenie vozidla v Yankee Drive";
-
-      if (!email) {
+      if (!email || !email.includes("@")) {
         toast("Najprv naskenujte QR kód alebo zadajte e-mail zákazníka!");
         return;
       }
-      if (!delta) {
-        toast("Zadajte počet bodov na pripísanie (alebo vyberte službu vyššie)!");
+      if (!delta || Math.abs(delta) > 2000) {
+        toast("Zadajte počet bodov (od -2000 do 2000) alebo vyberte službu vyššie!");
         return;
       }
-
-      const localMatch = getCustomers().find((c) => (c.email || "").toLowerCase() === email);
-      const today = new Date().toISOString().slice(0, 10);
-
       try {
-        const userRef = db.collection("customers").doc(email);
-        const doc = await userRef.get();
-        const data = doc.exists ? doc.data() : {};
-        const curPts = Number(data.points !== undefined ? data.points : (localMatch ? localMatch.loyalty_points : 0));
-        const newPts = Math.max(0, curPts + delta);
-        const curBonus = Number(data.bonusPoints || 0) + (delta > 0 ? delta : 0);
-        const curOrders = Number(data.ordersCount !== undefined ? data.ordersCount : (localMatch ? localMatch.orders_count : 0)) + (delta > 0 ? 1 : 0);
-        const custName = data.name || (localMatch && localMatch.name) || email.split("@")[0];
-        const prevHist = data.historyText || (localMatch && localMatch.history ? localMatch.history.join(" | ") : "");
-        const sign = delta > 0 ? `+${delta} b` : `${delta} b`;
-        const newHist = `${today}: ${note} (${sign})` + (prevHist ? " | " + prevHist : "");
-
-        await userRef.set({
-          email: email,
-          name: custName,
-          points: newPts,
-          bonusPoints: curBonus,
-          ordersCount: curOrders,
-          lastOrderDate: today,
-          historyText: newHist
-        }, { merge: true });
-
-        // Aktualizácia lokálneho prehľadu v aplikácii
-        updateLocalCustomerPoints(email, custName, delta, note, newPts);
-
-        document.getElementById("sc-points").textContent = newPts + " b";
+        const res = await applyPointsChange(email, delta, note);
+        setText("sc-points", res.newPts + " b");
         document.getElementById("qr-points-delta").value = "";
-        toast(`✅ Zapísané (${sign}) pre ${custName}! Nový stav: ${newPts} bodov.`);
+        toast(`✅ Zapísané (${res.sign}) pre ${res.name}! Nový stav: ${res.newPts} bodov.`);
+        loadData();
       } catch (e) {
-        toast("⚠️ Nepodarilo sa zapísať body do Firebase.");
+        console.error(e);
+        toast(e.message === "NOT_ENOUGH_POINTS" ? "⚠️ Zákazník nemá dosť bodov." : "⚠️ Nepodarilo sa zapísať body. Skontrolujte internet a oprávnenie.");
       }
     }
 
-    function updateLocalCustomerPoints(email, name, delta, note, newPts) {
-      const today = new Date().toISOString().slice(0, 10);
-      const extraCust = JSON.parse(localStorage.getItem("yd_extra_customers") || "[]");
-      const existingIdx = extraCust.findIndex((c) => (c.email || "").toLowerCase() === email);
-      if (existingIdx >= 0) {
-        extraCust[existingIdx].loyalty_points = newPts;
-        if (delta > 0) {
-          extraCust[existingIdx].total_spent_eur += delta;
-          extraCust[existingIdx].orders_count += 1;
+    // ================= OVERENIE A POUŽITIE POUKAZU =================
+    async function checkCoupon() {
+      if (!requireStaff()) return;
+      const code = document.getElementById("coupon-code").value.trim().toUpperCase();
+      const out = document.getElementById("coupon-result");
+      const useBtn = document.getElementById("coupon-use-btn");
+      useBtn.style.display = "none";
+      if (!code) {
+        out.textContent = "Zadajte kód poukazu.";
+        return;
+      }
+      try {
+        const doc = await db.collection("coupons").doc(code).get();
+        if (!doc.exists) {
+          out.textContent = "❌ Poukaz s týmto kódom neexistuje.";
+          return;
         }
-        extraCust[existingIdx].history.unshift(`${today}: ${note} (${delta > 0 ? "+" + delta : delta} b)`);
-      } else {
-        const baseMatch = BASE_CUSTOMERS.find((c) => (c.email || "").toLowerCase() === email);
-        if (baseMatch) {
-          baseMatch.loyalty_points = newPts;
-          if (delta > 0) {
-            baseMatch.total_spent_eur += delta;
-            baseMatch.orders_count += 1;
-          }
-          baseMatch.history.unshift(`${today}: ${note} (${delta > 0 ? "+" + delta : delta} b)`);
+        const c = doc.data();
+        if (c.status === "active") {
+          out.textContent = `✅ Platný poukaz: ${c.reward} (${c.cost} b) – ${c.email}`;
+          useBtn.style.display = "block";
         } else {
-          extraCust.unshift({
-            name: name,
-            email: email,
-            phone: "",
-            city: "Vernostný klub",
-            orders_count: 1,
-            total_spent_eur: Math.max(0, delta),
-            loyalty_points: newPts,
-            last_order_date: today,
-            history: [`${today}: ${note} (${delta > 0 ? "+" + delta : delta} b)`]
-          });
+          out.textContent = `⚠️ Poukaz už bol použitý${c.usedBy ? " (" + c.usedBy + ")" : ""}: ${c.reward} – ${c.email}`;
         }
+      } catch (e) {
+        console.error(e);
+        out.textContent = "⚠️ Poukaz sa nepodarilo overiť.";
       }
-      localStorage.setItem("yd_extra_customers", JSON.stringify(extraCust));
-      renderCustomers();
     }
 
-    function getCustomers() {
-      const extra = JSON.parse(localStorage.getItem("yd_extra_customers") || "[]");
-      return [...extra, ...BASE_CUSTOMERS];
+    async function useCoupon() {
+      if (!requireStaff()) return;
+      const code = document.getElementById("coupon-code").value.trim().toUpperCase();
+      try {
+        await db.collection("coupons").doc(code).update({
+          status: "used",
+          usedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          usedBy: currentStaff.email
+        });
+        document.getElementById("coupon-use-btn").style.display = "none";
+        setText("coupon-result", "✅ Poukaz " + code + " bol označený ako použitý.");
+      } catch (e) {
+        console.error(e);
+        toast("⚠️ Poukaz sa nepodarilo označiť ako použitý.");
+      }
     }
 
-    function getOrders() {
-      const extra = JSON.parse(localStorage.getItem("yd_extra_orders") || "[]");
-      return [...extra, ...BASE_ORDERS];
-    }
-
-    function renderCustomers() {
-      const list = getCustomers();
-      const el = document.getElementById("customers-list");
-      el.innerHTML = list.map((c) => {
-        const cleanPhone = (c.phone || "").replace(/[^0-9]/g, "");
-        const safeEmail = (c.email || "").replace(/'/g, "");
-        const safeName = (c.name || "").replace(/'/g, "");
-        return `
-          <div class="cust-item">
-            <div class="cust-top">
-              <strong style="font-size:15px;">${c.name}</strong>
-              <span class="badge-pts">⭐ ${c.loyalty_points} bodov (${c.total_spent_eur.toFixed(2)} €)</span>
-            </div>
-            <div style="font-size:12px;color:var(--muted);">
-              📧 ${c.email || "—"} • 📞 ${c.phone || "—"} ${c.city ? "• 📍 " + c.city : ""}
-            </div>
-            <div style="font-size:12px;color:var(--text);margin-top:2px;">
-              ${(c.history || []).map((h) => `<div>• ${h}</div>`).join("")}
-            </div>
-            <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;">
-              ${safeEmail ? `<button class="btn btn-amber" style="padding:6px 10px;font-size:12px;" onclick="selectCustomerForLoyalty('${safeEmail}', '${safeName}')">⭐ Pripísať / Upraviť body</button>` : ""}
-              ${cleanPhone ? `<a href="https://wa.me/${cleanPhone}" target="_blank" class="btn" style="padding:6px 10px;font-size:12px;">💬 WhatsApp</a>` : ""}
-              ${cleanPhone ? `<a href="tel:+${cleanPhone}" class="btn" style="padding:6px 10px;font-size:12px;">📞 Zavolať</a>` : ""}
-            </div>
-          </div>
-        `;
-      }).join("");
-    }
-
+    // ================= RUČNÉ PRIDANIE ZÁKAZNÍKA =================
     async function addManualCustomer() {
+      if (!requireStaff()) return;
       const name = document.getElementById("nc-name").value.trim();
       const phone = document.getElementById("nc-phone").value.trim();
       const email = document.getElementById("nc-email").value.trim().toLowerCase();
-      const price = parseFloat(document.getElementById("nc-price").value || "0");
+      const price = parseFloat(document.getElementById("nc-price").value || "0") || 0;
       const service = document.getElementById("nc-service").value.trim() || "Detailing / Čistenie";
       if (!name) {
         toast("Zadajte meno zákazníka.");
         return;
       }
-      const pts = Math.round(price);
-      const today = new Date().toISOString().slice(0, 10);
-      const extraCust = JSON.parse(localStorage.getItem("yd_extra_customers") || "[]");
-      extraCust.unshift({
-        name,
-        email,
-        phone,
-        city: "Prevádzka / Door-to-Door",
-        orders_count: 1,
-        total_spent_eur: price,
-        loyalty_points: pts,
-        last_order_date: today,
-        history: [`${today}: ${service} (${price.toFixed(2)} € - Dokončené)`]
-      });
-      localStorage.setItem("yd_extra_customers", JSON.stringify(extraCust));
-
-      const extraOrd = JSON.parse(localStorage.getItem("yd_extra_orders") || "[]");
-      extraOrd.unshift({
-        type: "Čistenie / Služba",
-        number: "YD-" + Math.floor(1000 + Math.random() * 9000),
-        date: today,
-        name,
-        email,
-        phone,
-        city: "Trebišov",
-        items: service,
-        total_eur: price,
-        status: "Dokončené"
-      });
-      localStorage.setItem("yd_extra_orders", JSON.stringify(extraOrd));
-
-      // Ak je zadaný e-mail, rovno zapíšeme body aj do Firebase Vernostného Klubu!
-      if (email && db && pts > 0) {
-        try {
-          const userRef = db.collection("customers").doc(email);
-          const doc = await userRef.get();
-          const curPts = doc.exists ? Number(doc.data().points || 0) : 0;
-          await userRef.set({
-            email,
+      if (!email && !phone) {
+        toast("Zadajte e-mail alebo telefón zákazníka.");
+        return;
+      }
+      const pts = Math.max(0, Math.round(price));
+      const today = todayStr();
+      const number = "YD-" + stampStr();
+      try {
+        if (email) {
+          if (pts > 0) {
+            await applyPointsChange(email, pts, `${service} (${price.toFixed(2)} €)`, { name, phone, spentEur: price });
+          } else {
+            await db.collection("customers").doc(email).set({ email, name, phone }, { merge: true });
+          }
+        } else {
+          const id = "tel-" + normalizePhone(phone);
+          await db.collection("customers").doc(id).set({
             name,
             phone,
-            points: curPts + pts,
-            ordersCount: (doc.exists ? Number(doc.data().ordersCount || 0) : 0) + 1,
-            historyText: `${today}: ${service} (+${pts} b)`
+            lastOrderDate: today,
+            historyText: `${today}: ${service} (${price.toFixed(2)} €)`,
+            updatedBy: currentStaff.email
           }, { merge: true });
-        } catch (e) {}
+        }
+        await db.collection("orders").doc("manual-" + stampStr() + "-" + Math.random().toString(36).slice(2, 6)).set({
+          type: "Čistenie / Služba",
+          number,
+          date: today,
+          name,
+          email,
+          phone,
+          city: "",
+          items: service,
+          total_eur: price,
+          status: "Dokončené",
+          source: "manual",
+          createdBy: currentStaff.email,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        ["nc-name", "nc-phone", "nc-email", "nc-price", "nc-service"].forEach((id) => { document.getElementById(id).value = ""; });
+        toast(`✅ Uložené (${number})${email && pts ? " + " + pts + " bodov" : ""}!`);
+        loadData();
+      } catch (e) {
+        console.error(e);
+        toast("⚠️ Zákazníka sa nepodarilo uložiť. Skontrolujte internet.");
       }
-
-      document.getElementById("nc-name").value = "";
-      document.getElementById("nc-phone").value = "";
-      document.getElementById("nc-email").value = "";
-      document.getElementById("nc-price").value = "";
-      document.getElementById("nc-service").value = "";
-      renderCustomers();
-      toast("✅ Zákazník a vernostné body boli uložené!");
     }
 
+    // ================= EXPORT CSV =================
     function triggerCsvDownload(filename, rows) {
       const csvContent = "\uFEFF" + rows.map((r) =>
-        r.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(";")
+        r.map((cell) => {
+          let s = String(cell === undefined || cell === null ? "" : cell);
+          if (/^[=+\-@]/.test(s)) s = "'" + s; // ochrana pred vzorcami v Exceli
+          return `"${s.replace(/"/g, '""')}"`;
+        }).join(";")
       ).join("\r\n");
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
@@ -992,101 +1211,58 @@
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast("📥 Súbor " + filename + " bol stiahnutý do PC!");
+      toast("📥 Súbor " + filename + " bol stiahnutý.");
     }
 
     function downloadCustomersCsv() {
-      const rows = [
-        ["Meno a priezvisko", "E-mail", "Telefón", "Mesto / Odber", "Počet objednávok", "Celková útrata (EUR)", "Vernostné body", "Posledná objednávka", "História nákupov a čistenia"]
-      ];
-      getCustomers().forEach((c) => {
-        rows.push([
-          c.name,
-          c.email,
-          c.phone,
-          c.city,
-          c.orders_count,
-          c.total_spent_eur.toFixed(2).replace(".", ","),
-          c.loyalty_points,
-          c.last_order_date,
-          (c.history || []).join(" | ")
-        ]);
+      if (!requireStaff()) return;
+      const rows = [["Meno a priezvisko", "E-mail", "Telefón", "Mesto / Odber", "Počet objednávok", "Celková útrata (EUR)", "Vernostné body", "Posledná objednávka", "História nákupov a čistenia"]];
+      customers.forEach((c) => {
+        rows.push([c.name, c.email, c.phone, c.city, c.ordersCount || 0, Number(c.totalSpentEur || 0).toFixed(2).replace(".", ","), c.points || 0, c.lastOrderDate, customerHistory(c).join(" | ")]);
       });
-      triggerCsvDownload("yankee_drive_zakaznici.csv", rows);
+      triggerCsvDownload(`yankee_drive_zakaznici_${todayStr()}.csv`, rows);
     }
 
     function downloadOrdersCsv() {
-      const rows = [
-        ["Typ", "Číslo", "Dátum", "Meno zákazníka", "E-mail", "Telefón", "Mesto", "Služba / Produkty", "Suma (EUR)", "Stav"]
-      ];
-      getOrders().forEach((o) => {
-        rows.push([
-          o.type,
-          o.number,
-          o.date,
-          o.name,
-          o.email,
-          o.phone,
-          o.city,
-          o.items,
-          o.total_eur.toFixed(2).replace(".", ","),
-          o.status
-        ]);
+      if (!requireStaff()) return;
+      const rows = [["Typ", "Číslo", "Dátum", "Meno zákazníka", "E-mail", "Telefón", "Mesto", "Služba / Produkty", "Suma (EUR)", "Stav"]];
+      orders.forEach((o) => {
+        rows.push([o.type, o.number, o.date, o.name, o.email, o.phone, o.city, o.items, Number(o.total_eur || 0).toFixed(2).replace(".", ","), o.status]);
       });
-      triggerCsvDownload("yankee_drive_objednavky.csv", rows);
+      triggerCsvDownload(`yankee_drive_objednavky_${todayStr()}.csv`, rows);
     }
 
-    function checkUnlocked() {
-      if (localStorage.getItem("yd_unlocked") === "1") {
-        document.getElementById("pin-overlay").classList.add("hidden");
-      }
-    }
-
-    function checkPinInput() {
-      const val = document.getElementById("pin-field").value;
-      if (val === (localStorage.getItem("yd_custom_pin") || DEFAULT_PIN)) {
-        unlockWithPin();
-      }
-    }
-
-    function unlockWithPin() {
-      const val = document.getElementById("pin-field").value;
-      const expected = localStorage.getItem("yd_custom_pin") || DEFAULT_PIN;
-      if (val === expected) {
-        localStorage.setItem("yd_unlocked", "1");
-        document.getElementById("pin-overlay").classList.add("hidden");
-        document.getElementById("pin-err").style.display = "none";
-      } else {
-        document.getElementById("pin-err").style.display = "block";
-      }
-    }
-
-    function lockApp() {
-      localStorage.removeItem("yd_unlocked");
-      document.getElementById("pin-field").value = "";
-      document.getElementById("pin-overlay").classList.remove("hidden");
-    }
-
+    // ================= UI POMÔCKY =================
     function toast(msg) {
       const t = document.getElementById("toast");
       t.textContent = msg;
       t.classList.add("show");
       clearTimeout(window._tt);
-      window._tt = setTimeout(() => t.classList.remove("show"), 2800);
+      window._tt = setTimeout(() => t.classList.remove("show"), 3200);
     }
 
     function openTab(id, btn) {
       document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
       document.getElementById("tab-" + id).classList.add("active");
-      document.querySelectorAll(".nav-item").forEach((b) => b.classList.remove("active"));
+      document.querySelectorAll(".nav-item").forEach((b) => {
+        b.classList.remove("active");
+        b.removeAttribute("aria-current");
+      });
       btn.classList.add("active");
+      btn.setAttribute("aria-current", "page");
     }
 
-    function copyById(id) {
+    async function copyById(id) {
       const el = document.getElementById(id);
-      navigator.clipboard.writeText(el.value);
-      toast("✅ Skopírované do schránky!");
+      try {
+        await navigator.clipboard.writeText(el.value);
+        toast("✅ Skopírované do schránky!");
+      } catch (e) {
+        el.select();
+        toast("Označené – skopírujte podržaním textu.");
+      }
     }
+
 
     function setWaTpl(type, btn) {
       btn.parentElement.querySelectorAll(".chip-btn").forEach((b) => b.classList.remove("selected"));
@@ -1094,7 +1270,7 @@
       const map = {
         ready: "Dobrý deň, tu je Yankee Drive Trebišov. Vaše vozidlo je kompletne vyčistené, vyleštené a pripravené na odovzdanie. 🚗✨ V prípade otázok sme Vám k dispozícii na +421 940 247 133.",
         confirm: "Dobrý deň, potvrdzujeme Vašu rezerváciu v Yankee Drive (Milhostov 190, Trebišov). 🚗 Tešíme sa na Vás! Ak využijete službu vyzdvihnutia vozidla, dajte nám prosím vedieť adresu. Tel: +421 940 247 133 | www.yankeedrive.sk",
-        review: "Dobrý deň, ďakujeme, že ste si vybrali Yankee Drive! 🚗✨ Ak ste boli s čistotou Vášho auta spokojný, veľmi nás poteší Vaše krátke hodnotenie na Google: https://search.google.com/local/writereview?placeid=ChIJ7717ljXVPkcR-3oLS6lkWaQ Ďakujeme!",
+        review: "Dobrý deň, ďakujeme, že ste si vybrali Yankee Drive! 🚗✨ Ak ste boli s čistotou Vášho auta spokojní, veľmi nás poteší Vaše krátke hodnotenie na Google: https://search.google.com/local/writereview?placeid=ChIJ7717ljXVPkcR-3oLS6lkWaQ Ďakujeme!",
         pickup: "Dobrý deň, tu je Yankee Drive. Sme na ceste k Vám pre vyzdvihnutie vozidla na čistenie. 🚗🔑 Po dokončení programu Vám auto privezieme späť čisté a pripravené na jazdu."
       };
       document.getElementById("wa-msg").value = map[type] || map.ready;
@@ -1164,18 +1340,24 @@
       const name = document.getElementById("rev-customer").value.trim() || "zákazník";
       const srv = document.getElementById("rev-service").value;
       const map = {
-        refresh: `Ďakujeme veľmi pekne za skvelé hodnotenie, ${name}! Teší nás, že ste boli spokojný s naším ručným umývaním áut a balíčkom Yankee Refresh. V Yankee Drive Trebišov (Milhostov) si dávame záležať na každom detaile. Budeme sa tešiť na Vašu ďalšiu návštevu – online rezervácie na www.yankeedrive.sk alebo +421 940 247 133!`,
+        refresh: `Ďakujeme veľmi pekne za skvelé hodnotenie, ${name}! Teší nás, že ste boli spokojní s naším ručným umývaním áut a balíčkom Yankee Refresh. V Yankee Drive Trebišov (Milhostov) si dávame záležať na každom detaile. Budeme sa tešiť na Vašu ďalšiu návštevu – online rezervácie na www.yankeedrive.sk alebo +421 940 247 133!`,
         standard: `Srdečne ďakujeme za Vašu recenziu, ${name}! Sme radi, že hĺbkové tepovanie a kompletné čistenie interiéru aj exteriéru v Yankee Drive splnilo Vaše očakávania. Profesionálny autodetailing v Trebišove robíme s vášňou pre čisté autá. Tešíme sa na Vás opäť!`,
-        exclusive: `Veľká vďaka za dôveru a parádne hodnotenie, ${name}! Strojové leštenie laku a prémiový autodetailing v balíčku Yankee Exclusive patrí medzi našu srdcovku. Sme hrdí, že Vaše auto opäť žiari ako nové. Kedykoľvek budete potrebovať starostlivosť o vozidlo v Trebišove, sme tu pre Vás na www.yankeedrive.sk alebo +421 940 247 133!`
+        exclusive: `Veľká vďaka za dôveru a parádne hodnotenie, ${name}! Strojové leštenie laku a prémiový autodetailing v balíčku Yankee Exclusive sú pre nás srdcovou záležitosťou. Sme hrdí, že Vaše auto opäť žiari ako nové. Kedykoľvek budete potrebovať starostlivosť o vozidlo v Trebišove, sme tu pre Vás na www.yankeedrive.sk alebo +421 940 247 133!`
       };
       document.getElementById("rev-text").value = map[srv] || map.refresh;
     }
 
-    checkUnlocked();
-    renderCustomers();
-    updateCalc();
-    setMailTpl("refresh");
-    updateReviewText();
+
+    function initApp() {
+      updateCalc();
+      setMailTpl("refresh");
+      updateReviewText();
+    }
+    initApp();
+
+      // Funkcie volané z HTML atribútov onclick
+      Object.assign(window, { signInStaff, resetStaffPassword, lockApp, renderCustomers, toggleCameraScanner, scanQrFromFile, loadLoyaltyAccountByInput, presetLoyaltyPoints, savePointsToFirebase, checkCoupon, useCoupon, addManualCustomer, downloadCustomersCsv, downloadOrdersCsv, openTab, copyById, setWaTpl, openWhatsApp, selectPkg, toggleExtra, sendCalcToWa, setMailTpl, openMailApp, updateReviewText });
+    });
   </script>
 </body>
 </html>
