@@ -211,11 +211,63 @@ def _int_field(fields, name):
         return 0
 
 
+def history_key(line):
+    """Kľúč riadku histórie bez sumy/stavu v poslednej zátvorke.
+
+    Napr. "2026-08-20: 1x Produkt (20.80 € - Ukončené)" -> "2026-08-20: 1x Produkt".
+    Vďaka tomu sa riadok nezdvojí ani vtedy, keď sa vo Welcomio zmení stav objednávky.
+    """
+    line = str(line or "").strip()
+    if line.endswith(")") and " (" in line:
+        line = line.rsplit(" (", 1)[0]
+    return line.strip().lower()
+
+
+def split_history(text):
+    return [part.strip() for part in str(text or "").split(" | ") if part.strip()]
+
+
+def new_welcomio_history(welcomio_lines, existing_history_text):
+    """Vráti iba tie riadky z Welcomio, ktoré ešte nie sú v historyText (žiadna duplicita)."""
+    existing_keys = {history_key(l) for l in split_history(existing_history_text)}
+    out, seen = [], set()
+    for line in welcomio_lines:
+        key = history_key(line)
+        if key in existing_keys or key in seen:
+            continue
+        seen.add(key)
+        out.append(line)
+    return out
+
+
+def compute_points(existing_fields, welcomio_points):
+    """Nové body zákazníka – NIKDY nie nižšie ako existujúce.
+
+    vypočítané = Welcomio + pripísané obsluhou - minuté
+    Ak už záznam existuje, výsledok je max(existujúce, vypočítané, existujúce + nárast
+    Welcomio bodov od poslednej synchronizácie). Tak sa zachovajú body zadané obsluhou
+    aj pri starších záznamoch bez polí bonusPoints/redeemedPoints a nové nákupy sa pripočítajú.
+    """
+    bonus_points = _int_field(existing_fields, "bonusPoints")
+    redeemed_points = _int_field(existing_fields, "redeemedPoints")
+    computed = max(0, welcomio_points + bonus_points - redeemed_points)
+    if "points" not in existing_fields:
+        return computed
+    existing_points = _int_field(existing_fields, "points")
+    candidates = [existing_points, computed]
+    if "welcomioPoints" in existing_fields:
+        growth = welcomio_points - _int_field(existing_fields, "welcomioPoints")
+        if growth > 0:
+            candidates.append(existing_points + growth)
+    return max(candidates)
+
+
 def sync_to_firestore(customers, records=None):
     """Zapíše zákazníkov (customers) a objednávky (orders) do Firestore cez servisný účet.
 
     Zákazníkom sa aktualizujú iba polia z Welcomio (updateMask), takže sa NEPREPÍŠU
     body pripísané obsluhou, minuté body, poukazy ani história zápisov obsluhy.
+    Body sa nikdy neznížia (compute_points) a história sa nezdvojí (new_welcomio_history).
     """
     token = get_firestore_token()
     if not token:
@@ -243,10 +295,10 @@ def sync_to_firestore(customers, records=None):
             print(f"Firestore read warning: {type(e).__name__}", file=sys.stderr)
             continue
 
-        bonus_points = _int_field(existing_fields, "bonusPoints")
-        redeemed_points = _int_field(existing_fields, "redeemedPoints")
         welcomio_points = int(c["loyalty_points"])
-        final_points = max(0, welcomio_points + bonus_points - redeemed_points)
+        final_points = compute_points(existing_fields, welcomio_points)
+        existing_history = (existing_fields.get("historyText") or {}).get("stringValue", "")
+        welcomio_history = new_welcomio_history(c["history"], existing_history)
         prev_last = (existing_fields.get("lastOrderDate") or {}).get("stringValue", "")
         last_order = max(prev_last, c["last_order_date"] or "")
 
@@ -262,7 +314,8 @@ def sync_to_firestore(customers, records=None):
                 "welcomioPoints": {"integerValue": str(welcomio_points)},
                 "points": {"integerValue": str(final_points)},
                 "lastOrderDate": {"stringValue": last_order},
-                "welcomioHistoryText": {"stringValue": " | ".join(c["history"])[:5000]},
+                # Iba riadky, ktoré ešte nie sú v historyText (žiadna dvojitá história).
+                "welcomioHistoryText": {"stringValue": " | ".join(welcomio_history)[:5000]},
             }
         }
         try:

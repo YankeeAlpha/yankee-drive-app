@@ -19,7 +19,7 @@
   <script src="./vendor/firebase-app-compat.js" defer></script>
   <script src="./vendor/firebase-auth-compat.js" defer></script>
   <script src="./vendor/firebase-firestore-compat.js" defer></script>
-  <script src="./js/firebase-config.js" defer></script>
+  <script src="./js/firebase-config.js?v=3" defer></script>
   <style>
     :root {
       --bg: #0c0d10;
@@ -786,10 +786,7 @@
     }
 
     function customerHistory(c) {
-      const parts = [];
-      if (c.historyText) parts.push(...String(c.historyText).split(" | "));
-      if (c.welcomioHistoryText) parts.push(...String(c.welcomioHistoryText).split(" | "));
-      return parts.filter(Boolean);
+      return window.ydMergeHistory(c.historyText, c.welcomioHistoryText);
     }
 
     function renderCustomers() {

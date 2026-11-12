@@ -12,7 +12,7 @@
   <script src="./vendor/firebase-auth-compat.js" defer></script>
   <script src="./vendor/firebase-firestore-compat.js" defer></script>
   <script src="./vendor/qrcode-generator.js" defer></script>
-  <script src="./js/firebase-config.js" defer></script>
+  <script src="./js/firebase-config.js?v=3" defer></script>
   <style>
     :root {
       --bg: #080a0f;
@@ -766,10 +766,7 @@
 
       const histEl = document.getElementById("historyContainer");
       histEl.textContent = "";
-      const items = []
-        .concat(d.historyText ? String(d.historyText).split(" | ") : [])
-        .concat(d.welcomioHistoryText ? String(d.welcomioHistoryText).split(" | ") : [])
-        .filter(Boolean);
+      const items = window.ydMergeHistory(d.historyText, d.welcomioHistoryText);
       if (!data) {
         const p = document.createElement("div");
         p.style.padding = "8px 0";

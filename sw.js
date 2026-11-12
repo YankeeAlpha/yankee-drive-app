@@ -3,7 +3,7 @@
 // Knižnice, ikony a obrázky: najprv cache.
 // Požiadavky na Firebase/Google (iný pôvod) sa NEcachujú – údaje zákazníkov
 // sa neukladajú do cache service workera.
-const CACHE = "yd-app-v2";
+const CACHE = "yd-app-v3";
 const PRECACHE = [
   "./",
   "./index.html",
@@ -16,7 +16,7 @@ const PRECACHE = [
   "./icons/icon-maskable-512.png",
   "./icons/apple-touch-icon-180.png",
   "./logo_yd_small.webp",
-  "./js/firebase-config.js",
+  "./js/firebase-config.js?v=3",
   "./vendor/firebase-app-compat.js",
   "./vendor/firebase-auth-compat.js",
   "./vendor/firebase-firestore-compat.js",

@@ -30,3 +30,26 @@ window.ydConnectEmulators = function (auth, db) {
   auth.useEmulator("http://127.0.0.1:9099", { disableWarnings: true });
   db.useEmulator("127.0.0.1", 8080);
 };
+
+// Spojí históriu zápisov obsluhy (historyText) a históriu z Welcomio (welcomioHistoryText)
+// tak, aby sa rovnaký riadok zobrazil iba raz (porovnáva sa text bez poslednej zátvorky so sumou/stavom).
+window.ydMergeHistory = function (historyText, welcomioHistoryText) {
+  const key = (line) => {
+    let s = String(line || "").trim();
+    if (s.endsWith(")") && s.includes(" (")) s = s.slice(0, s.lastIndexOf(" ("));
+    return s.trim().toLowerCase();
+  };
+  const seen = new Set();
+  const out = [];
+  [historyText, welcomioHistoryText].forEach((text) => {
+    String(text || "").split(" | ").forEach((line) => {
+      const l = line.trim();
+      if (!l) return;
+      const k = key(l);
+      if (seen.has(k)) return;
+      seen.add(k);
+      out.push(l);
+    });
+  });
+  return out;
+};
