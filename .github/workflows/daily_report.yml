@@ -1,4 +1,4 @@
-name: Yankee Drive – Denný Report & Synchronizácia Tabuľky Zákazníkov (20:00 SK)
+name: Yankee Drive – Denný Report & Synchronizácia Zákazníkov (20:00 SK)
 
 on:
   schedule:
@@ -14,8 +14,9 @@ on:
     - cron: '0 20 * * *'
   workflow_dispatch:
 
+# Workflow už nič necommituje do repa – stačí len čítanie.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   send-daily-report:
@@ -28,6 +29,22 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      - name: Install dependencies (Firebase servisný účet)
+        run: pip install --quiet google-auth requests
+
+      - name: Dátum pre značku odoslaného reportu
+        id: day
+        run: echo "date=$(TZ=Europe/Bratislava date +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      # Značka "report dnes odoslaný" sa drží v GitHub Actions cache (nie v repe).
+      - name: Načítať značku odoslaného reportu
+        if: github.event_name == 'schedule'
+        id: marker
+        uses: actions/cache/restore@v4
+        with:
+          path: .report_sent
+          key: report-sent-${{ steps.day.outputs.date }}
 
       - name: Synchronize Customers CSV & Send Daily Report at 20:00 Europe/Bratislava
         env:
@@ -49,6 +66,7 @@ jobs:
           GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
           GOOGLE_GBP_ACCOUNT: ${{ secrets.GOOGLE_GBP_ACCOUNT }}
           GOOGLE_GBP_LOCATION: ${{ secrets.GOOGLE_GBP_LOCATION }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
           python3 - << 'EOF'
           import os, subprocess, sys
@@ -62,7 +80,7 @@ jobs:
           print(f"Aktuálny čas na Slovensku: {now_sk.strftime('%Y-%m-%d %H:%M:%S %Z')} (event={event})")
 
           # Marker súbor pre zabránenie duplicitnému odoslaniu v ten istý deň
-          marker_file = Path(f".report_sent_{today_str}")
+          marker_file = Path(".report_sent")
 
           if event == "schedule":
               # Ak už bol report dnes odoslaný, ukončíme
@@ -76,8 +94,11 @@ jobs:
 
           print("Spúšťam dennú synchronizáciu a odoslanie reportu...")
 
-          # 1. Aktualizácia Excel/CSV tabuľky zákazníkov a objednávok z Welcomio
-          subprocess.run(["python3", "tools/export_customers.py", "--output-dir", "."])
+          # 1. Synchronizácia zákazníkov a objednávok z Welcomio do Firestore.
+          #    CSV/JSON s osobnými údajmi idú len do dočasného priečinka na runneri
+          #    (mimo repa) a po skončení behu zaniknú. Obsluha si ich stiahne
+          #    v internej aplikácii po prihlásení.
+          subprocess.run(["python3", "tools/export_customers.py", "--output-dir", "/tmp/yd-exports"])
 
           # 2. Odoslanie denného reportu na servis@yankeedrive.sk
           res = subprocess.run(["python3", "tools/yankee_briefing.py", "--send-email", "--to", "servis@yankeedrive.sk"])
@@ -87,9 +108,9 @@ jobs:
           sys.exit(res.returncode)
           EOF
 
-      - name: Commit updated customer & order CSV spreadsheets
-        run: |
-          git config user.name "Yankee Drive AI Bot"
-          git config user.email "servis@yankeedrive.sk"
-          git add yankee_drive_zakaznici.csv yankee_drive_objednavky.csv customers_data.json .report_sent_* || true
-          git diff --staged --quiet || (git commit -m "Auto-update: Tabuľka zákazníkov a záznam reportu" && git push)
+      - name: Uložiť značku odoslaného reportu
+        if: github.event_name == 'schedule' && hashFiles('.report_sent') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: .report_sent
+          key: report-sent-${{ steps.day.outputs.date }}

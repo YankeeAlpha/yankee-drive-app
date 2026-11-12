@@ -2,17 +2,24 @@
 """
 Yankee Drive - Export zákazníkov, objednávok z e-shopu a online rezervácií čistenia do Excel/CSV tabuľky
 + Obojsmerná synchronizácia s Firebase Firestore databázou Vernostného Klubu (yankee-drive-loyality-card).
-Generuje:
+Generuje (do priečinka exports/, ktorý je v .gitignore – NIKDY necommitovať do verejného repa):
 1. yankee_drive_zakaznici.csv (Unikátni zákazníci + celková útrata + vernostné body 1 € = 1 bod)
 2. yankee_drive_objednavky.csv (Všetky objednávky z e-shopu a rezervácie čistenia)
-3. customers_data.json (Pre zobrazenie a 1-klikové stiahnutie do Excelu v internej aplikácii a vernostnom klube)
+3. customers_data.json (lokálny súhrn)
+
+Zápis do Firestore ide cez servisný účet Firebase (premenná FIREBASE_SERVICE_ACCOUNT
+s obsahom JSON kľúča, uložená ako GitHub Secret). Bez nej sa synchronizácia preskočí –
+anonymný zápis už Firestore pravidlá nepovoľujú.
 """
 
 import argparse
 import csv
 import json
+import os
+import re
 from pathlib import Path
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -160,9 +167,66 @@ def fetch_all_records():
     return customers, records
 
 
-def sync_to_firestore(customers):
-    """Synchronizes Welcomio customers to Firebase Firestore collection 'customers'."""
+_TOKEN_CACHE = {}
+
+
+def get_firestore_token():
+    """Vráti OAuth token servisného účtu (Firebase Admin) alebo None, ak nie je nastavený."""
+    if "token" in _TOKEN_CACHE:
+        return _TOKEN_CACHE["token"]
+    raw = os.environ.get("FIREBASE_SERVICE_ACCOUNT", "").strip()
+    if not raw:
+        return None
+    try:
+        from google.oauth2 import service_account
+        from google.auth.transport.requests import Request
+    except ImportError:
+        print("Chýba balík google-auth (pip install google-auth requests) – Firestore sync preskočený.", file=sys.stderr)
+        return None
+    info = json.loads(raw)
+    creds = service_account.Credentials.from_service_account_info(
+        info, scopes=["https://www.googleapis.com/auth/datastore"]
+    )
+    creds.refresh(Request())
+    _TOKEN_CACHE["token"] = creds.token
+    return creds.token
+
+
+def _fs_request(url, token, method="GET", body=None):
+    headers = {"Authorization": f"Bearer {token}", "User-Agent": "YankeeDriveExport/2.0"}
+    data = None
+    if body is not None:
+        data = json.dumps(body).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+    req = urllib.request.Request(url, data=data, headers=headers, method=method)
+    with urllib.request.urlopen(req, timeout=15) as r:
+        return json.loads(r.read().decode("utf-8", errors="ignore") or "{}")
+
+
+def _int_field(fields, name):
+    v = fields.get(name) or {}
+    try:
+        return int(v.get("integerValue", v.get("doubleValue", 0)))
+    except (TypeError, ValueError):
+        return 0
+
+
+def sync_to_firestore(customers, records=None):
+    """Zapíše zákazníkov (customers) a objednávky (orders) do Firestore cez servisný účet.
+
+    Zákazníkom sa aktualizujú iba polia z Welcomio (updateMask), takže sa NEPREPÍŠU
+    body pripísané obsluhou, minuté body, poukazy ani história zápisov obsluhy.
+    """
+    token = get_firestore_token()
+    if not token:
+        print("FIREBASE_SERVICE_ACCOUNT nie je nastavený – Firestore sync preskočený.", file=sys.stderr)
+        return 0
     synced = 0
+    mask_fields = [
+        "email", "name", "phone", "city", "address", "ordersCount", "totalSpentEur",
+        "welcomioPoints", "points", "lastOrderDate", "welcomioHistoryText",
+    ]
+    mask_qs = "&".join("updateMask.fieldPaths=" + f for f in mask_fields)
     for c in customers:
         email = (c.get("email") or "").strip().lower()
         if not email:
@@ -170,17 +234,21 @@ def sync_to_firestore(customers):
         doc_url = f"{FIRESTORE_BASE}/customers/{urllib.parse.quote(email, safe='@.')}"
         existing_fields = {}
         try:
-            req = urllib.request.Request(doc_url, headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req, timeout=8) as r:
-                existing_doc = json.loads(r.read().decode("utf-8", errors="ignore"))
-                existing_fields = existing_doc.get("fields", {})
-        except Exception:
-            existing_fields = {}
+            existing_fields = _fs_request(doc_url, token).get("fields", {})
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                print(f"Firestore read warning (HTTP {e.code})", file=sys.stderr)
+                continue
+        except Exception as e:
+            print(f"Firestore read warning: {type(e).__name__}", file=sys.stderr)
+            continue
 
-        bonus_points = int((existing_fields.get("bonusPoints") or {}).get("integerValue", 0))
-        redeemed_points = int((existing_fields.get("redeemedPoints") or {}).get("integerValue", 0))
+        bonus_points = _int_field(existing_fields, "bonusPoints")
+        redeemed_points = _int_field(existing_fields, "redeemedPoints")
         welcomio_points = int(c["loyalty_points"])
         final_points = max(0, welcomio_points + bonus_points - redeemed_points)
+        prev_last = (existing_fields.get("lastOrderDate") or {}).get("stringValue", "")
+        last_order = max(prev_last, c["last_order_date"] or "")
 
         body = {
             "fields": {
@@ -192,25 +260,42 @@ def sync_to_firestore(customers):
                 "ordersCount": {"integerValue": str(c["orders_count"])},
                 "totalSpentEur": {"doubleValue": float(c["total_spent_eur"])},
                 "welcomioPoints": {"integerValue": str(welcomio_points)},
-                "bonusPoints": {"integerValue": str(bonus_points)},
-                "redeemedPoints": {"integerValue": str(redeemed_points)},
                 "points": {"integerValue": str(final_points)},
-                "lastOrderDate": {"stringValue": c["last_order_date"] or ""},
-                "historyText": {"stringValue": " | ".join(c["history"])},
+                "lastOrderDate": {"stringValue": last_order},
+                "welcomioHistoryText": {"stringValue": " | ".join(c["history"])[:5000]},
             }
         }
         try:
-            data = json.dumps(body).encode("utf-8")
-            req = urllib.request.Request(
-                doc_url,
-                data=data,
-                headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"},
-                method="PATCH",
-            )
-            with urllib.request.urlopen(req, timeout=10) as _:
-                synced += 1
+            _fs_request(f"{doc_url}?{mask_qs}", token, method="PATCH", body=body)
+            synced += 1
         except Exception as e:
-            print(f"Firestore sync warning for {email}: {e}", file=sys.stderr)
+            print(f"Firestore write warning: {type(e).__name__}", file=sys.stderr)
+
+    for r in records or []:
+        prefix = "eshop" if str(r.get("type", "")).startswith("E-shop") else "rezervacia"
+        doc_id = re.sub(r"[^A-Za-z0-9_-]", "_", f"{prefix}-{r.get('number') or ''}")[:120]
+        if doc_id.endswith("-"):
+            continue
+        body = {"fields": {
+            "type": {"stringValue": r["type"]},
+            "number": {"stringValue": str(r["number"])},
+            "date": {"stringValue": r["date"] or ""},
+            "name": {"stringValue": r["name"] or ""},
+            "email": {"stringValue": r["email"] or ""},
+            "phone": {"stringValue": r["phone"] or ""},
+            "city": {"stringValue": r["city"] or ""},
+            "address": {"stringValue": r["address"] or ""},
+            "items": {"stringValue": r["items"] or ""},
+            "total_eur": {"doubleValue": float(r["total_eur"] or 0)},
+            "status": {"stringValue": r["status"] or ""},
+            "payment": {"stringValue": r["payment"] or ""},
+            "shipping": {"stringValue": r["shipping"] or ""},
+            "source": {"stringValue": "welcomio"},
+        }}
+        try:
+            _fs_request(f"{FIRESTORE_BASE}/orders/{doc_id}", token, method="PATCH", body=body)
+        except Exception as e:
+            print(f"Firestore order write warning: {type(e).__name__}", file=sys.stderr)
     return synced
 
 
@@ -218,7 +303,7 @@ def export_all(output_dir=None):
     export_dir = Path(output_dir).resolve() if output_dir else DEFAULT_EXPORT_DIR
     export_dir.mkdir(parents=True, exist_ok=True)
     customers, records = fetch_all_records()
-    firestore_synced = sync_to_firestore(customers)
+    firestore_synced = sync_to_firestore(customers, records)
 
     # 1. Write yankee_drive_zakaznici.csv (UTF-8 with BOM + ';' delimiter for Slovak Excel)
     cust_csv = export_dir / "yankee_drive_zakaznici.csv"
@@ -306,7 +391,13 @@ def export_all(output_dir=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Yankee Drive - Export zákazníkov do Excel/CSV a Firebase")
-    parser.add_argument("--output-dir", default=None, help="Cieľový priečinok pre CSV a JSON súbory")
+    parser.add_argument("--output-dir", default=None, help="Cieľový priečinok pre CSV a JSON súbory (predvolene exports/, mimo gitu)")
     args = parser.parse_args()
     out = export_all(args.output_dir)
-    print(json.dumps(out, indent=2, ensure_ascii=False))
+    # Do logu iba počty – logy GitHub Actions vo verejnom repe sú verejné.
+    print(json.dumps({
+        "ok": out.get("ok"),
+        "customers_count": out.get("customers_count"),
+        "records_count": out.get("records_count"),
+        "firestore_synced": out.get("firestore_synced"),
+    }, ensure_ascii=False))

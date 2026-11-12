@@ -1,0 +1,119 @@
+rules_version = '2';
+
+// Yankee Drive – zamknuté pravidlá Firestore (vernostný klub + interná aplikácia)
+//
+// Princípy:
+//  * Bez prihlásenia sa nedá čítať ani zapisovať nič.
+//  * Obsluha = prihlásený používateľ, ktorý má dokument staff/{uid}
+//    (dokument vytvára iba majiteľ vo Firebase konzole).
+//  * Zákazník = prihlásený používateľ s OVERENÝM e-mailom (Google účet alebo
+//    potvrdený e-mail). Číta iba svoj záznam customers/{email}.
+//  * Body pripisuje iba obsluha. Zákazník si môže body iba MINÚŤ na odmenu
+//    z pevného zoznamu (100/200/350/500 b), a to len spolu s vytvorením poukazu.
+//  * Servisný účet (GitHub Actions export z Welcomio) pravidlá obchádza – je to
+//    serverový prístup cez Admin oprávnenia.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isStaff() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/staff/$(request.auth.uid));
+    }
+
+    function myEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    function isVerifiedCustomer(email) {
+      return signedIn()
+        && request.auth.token.email != null
+        && request.auth.token.email_verified == true
+        && myEmail() == email;
+    }
+
+    function rewardCosts() {
+      return [100, 200, 350, 500];
+    }
+
+    // ---------------- Obsluha ----------------
+    match /staff/{uid} {
+      // Aplikácia si overí, či je prihlásený účet obsluha. Zápis len cez konzolu.
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+
+    // ---------------- Zákazníci / vernostné karty ----------------
+    match /customers/{email} {
+      allow get: if isStaff() || isVerifiedCustomer(email);
+      allow list: if isStaff();
+      allow create, update: if isStaff() || customerRedeems(email);
+      allow delete: if false;
+
+      // Zákazník si mení iba body pri uplatnení odmeny.
+      function customerRedeems(email) {
+        let before = resource.data;
+        let after = request.resource.data;
+        let cost = after.get('redeemedPoints', 0) - before.get('redeemedPoints', 0);
+        return isVerifiedCustomer(email)
+          && resource != null
+          && after.diff(before).affectedKeys()
+               .hasOnly(['points', 'redeemedPoints', 'lastCouponCode', 'lastCouponName'])
+          && cost in rewardCosts()
+          && after.points == before.get('points', 0) - cost
+          && after.points >= 0
+          && after.lastCouponCode is string
+          && existsAfter(/databases/$(database)/documents/coupons/$(after.lastCouponCode))
+          && getAfter(/databases/$(database)/documents/coupons/$(after.lastCouponCode)).data.email == email
+          && getAfter(/databases/$(database)/documents/coupons/$(after.lastCouponCode)).data.cost == cost;
+      }
+    }
+
+    // ---------------- Poukazy (odmeny) ----------------
+    match /coupons/{code} {
+      allow get: if isStaff()
+        || (signedIn() && resource.data.email == myEmail() && request.auth.token.email_verified == true);
+      allow list: if isStaff()
+        || (signedIn() && request.auth.token.email_verified == true
+            && resource.data.email == myEmail());
+      // Zákazník vytvára poukaz iba v tej istej dávke, v ktorej si odpočíta body.
+      allow create: if isVerifiedCustomer(request.resource.data.email)
+        && request.resource.data.keys().hasOnly(['email', 'cost', 'reward', 'status', 'createdAt'])
+        && request.resource.data.status == 'active'
+        && request.resource.data.cost in rewardCosts()
+        && request.resource.data.reward is string
+        && request.resource.data.reward.size() < 100
+        && request.resource.data.createdAt == request.time
+        && getAfter(/databases/$(database)/documents/customers/$(request.resource.data.email)).data.lastCouponCode == code
+        && getAfter(/databases/$(database)/documents/customers/$(request.resource.data.email)).data.get('redeemedPoints', 0)
+             == get(/databases/$(database)/documents/customers/$(request.resource.data.email)).data.get('redeemedPoints', 0)
+                + request.resource.data.cost;
+      // Obsluha označí poukaz ako použitý.
+      allow update: if isStaff()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'usedAt', 'usedBy']);
+      allow delete: if false;
+    }
+
+    // ---------------- Objednávky (export z Welcomio + ručné zápisy) ----------------
+    match /orders/{orderId} {
+      allow read, create, update: if isStaff();
+      allow delete: if false;
+    }
+
+    // ---------------- Denník zápisov bodov ----------------
+    match /pointsLog/{logId} {
+      allow read: if isStaff();
+      allow create: if isStaff() && request.resource.data.staffUid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // Všetko ostatné je zakázané.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -3,19 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Yankee Drive – VIP Vernostný Klub</title>
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <title>Yankee Drive – Vernostný klub</title>
+  <meta name="description" content="Vernostný klub Yankee Drive – zbierajte body za čistenie a nákupy a vymeňte ich za odmeny." />
+  <meta name="theme-color" content="#080a0f" />
+  <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+  <!-- Knižnice uložené priamo v repe (bez cudzích CDN) -->
+  <script src="./vendor/firebase-app-compat.js" defer></script>
+  <script src="./vendor/firebase-auth-compat.js" defer></script>
+  <script src="./vendor/firebase-firestore-compat.js" defer></script>
+  <script src="./vendor/qrcode-generator.js" defer></script>
+  <script src="./js/firebase-config.js" defer></script>
   <style>
     :root {
       --bg: #080a0f;
       --card: #11151f;
       --card-2: #171d2b;
       --border: #252f42;
-      --gold: #eab308;
-      --gold-light: #fde047;
-      --gold-dim: rgba(234, 179, 8, 0.14);
+      --gold: #f59e0b;
+      --gold-light: #fbbf24;
+      --gold-dim: rgba(245, 158, 11, 0.14);
       --text: #f8fafc;
       --muted: #94a3b8;
       --green: #22c55e;
@@ -95,9 +101,9 @@
       transition: all 0.18s ease;
     }
     .btn-gold {
-      background: linear-gradient(135deg, #facc15 0%, #ca8a04 100%);
+      background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
       color: #000;
-      box-shadow: 0 4px 16px rgba(234, 179, 8, 0.25);
+      box-shadow: 0 4px 16px rgba(245, 158, 11, 0.25);
     }
     .btn-gold:hover { transform: translateY(-1px); filter: brightness(1.06); }
     .btn-outline {
@@ -128,7 +134,7 @@
       padding: 5px 12px;
       border-radius: 999px;
       background: var(--gold-dim);
-      border: 1px solid rgba(234, 179, 8, 0.35);
+      border: 1px solid rgba(245, 158, 11, 0.35);
       color: var(--gold);
       font-size: 11px;
       font-weight: 800;
@@ -192,7 +198,7 @@
     }
     .vip-card {
       background: linear-gradient(135deg, #1b2234 0%, #0d1018 55%, #231c09 100%);
-      border: 1px solid rgba(234, 179, 8, 0.45);
+      border: 1px solid rgba(245, 158, 11, 0.45);
       border-radius: 22px;
       padding: 24px;
       position: relative;
@@ -209,7 +215,7 @@
       right: -60px;
       width: 180px;
       height: 180px;
-      background: radial-gradient(circle, rgba(234,179,8,0.22) 0%, transparent 70%);
+      background: radial-gradient(circle, rgba(245, 158, 11,0.22) 0%, transparent 70%);
       pointer-events: none;
     }
     .vip-head {
@@ -226,9 +232,9 @@
       font-weight: 900;
       letter-spacing: 0.7px;
       text-transform: uppercase;
-      background: rgba(234, 179, 8, 0.2);
+      background: rgba(245, 158, 11, 0.2);
       color: var(--gold-light);
-      border: 1px solid rgba(234, 179, 8, 0.5);
+      border: 1px solid rgba(245, 158, 11, 0.5);
     }
     .points-big {
       font-size: 42px;
@@ -259,7 +265,7 @@
     }
     .progress-bar-fill {
       height: 100%;
-      background: linear-gradient(90deg, #eab308, #fde047);
+      background: linear-gradient(90deg, #f59e0b, #fbbf24);
       width: 0%;
       transition: width 0.4s ease;
     }
@@ -306,7 +312,7 @@
       transition: border-color 0.2s;
     }
     .reward-card.unlocked {
-      border-color: rgba(234, 179, 8, 0.55);
+      border-color: rgba(245, 158, 11, 0.55);
     }
     .reward-pts {
       display: inline-block;
@@ -364,7 +370,7 @@
   <header>
     <div class="nav-wrap">
       <a href="https://www.yankeedrive.sk" class="brand">
-        <img src="logo_yd.png" alt="Yankee Drive Logo" onerror="this.style.display='none'" />
+        <img src="logo_yd_small.webp" alt="Yankee Drive Logo" onerror="this.style.display='none'" />
         <div>
           <div class="brand-title">YANKEE DRIVE</div>
           <div class="brand-sub">VIP Vernostný Klub</div>
@@ -373,7 +379,6 @@
       <div class="nav-actions">
         <a href="poradna.html" class="btn btn-outline">🤖 AI Poradňa</a>
         <a href="https://www.yankeedrive.sk/#section-bookings" class="btn btn-outline">📅 Online Rezervácia</a>
-        <button class="btn btn-outline" onclick="toggleStaffPanel()">🔐 Obsluha</button>
       </div>
     </div>
   </header>
@@ -385,23 +390,45 @@
       <p>Zbierajte body za každé ručné umývanie, detailing, tepovanie aj nákup autokozmetiky Koch Chemie & Colourlock na <strong>www.yankeedrive.sk</strong> a vymieňajte ich za okamžité odmeny.</p>
     </div>
 
-    <!-- PRIHLÁSENIE ZÁKAZNÍKA -->
+    <!-- PRIHLÁSENIE ZÁKAZNÍKA (Firebase Authentication) -->
     <div id="loginSection" class="login-card">
       <div style="text-align:center;margin-bottom:18px;">
-        <img src="logo_yd.png" alt="Yankee Drive" style="width:110px;height:76px;object-fit:contain;background:#ffffff;padding:8px 14px;border-radius:14px;border:2px solid var(--gold);box-shadow:0 4px 16px rgba(255,255,255,0.12);margin-bottom:10px;" onerror="this.style.display='none'" />
+        <img src="logo_yd_small.webp" alt="Yankee Drive" width="110" height="76" style="width:110px;height:76px;object-fit:contain;background:#ffffff;padding:8px 14px;border-radius:14px;border:2px solid var(--gold);box-shadow:0 4px 16px rgba(255,255,255,0.12);margin-bottom:10px;" onerror="this.style.display='none'" />
         <h2 style="font-size:20px;font-weight:800;">Vstúpiť do môjho konta</h2>
-        <p style="font-size:12px;color:var(--muted);margin-top:4px;">Zadajte svoj e-mail z objednávky alebo rezervácie na yankeedrive.sk</p>
+        <p style="font-size:12px;color:var(--muted);margin-top:4px;">Prihláste sa rovnakým e-mailom, aký ste použili pri objednávke alebo rezervácii na yankeedrive.sk</p>
       </div>
 
-      <form onsubmit="handleLogin(event)">
+      <button type="button" class="btn btn-gold" style="width:100%;justify-content:center;padding:13px;font-size:14px;" onclick="signInWithGoogle()">
+        Prihlásiť sa cez Google
+      </button>
+
+      <div style="text-align:center;color:var(--muted);font-size:12px;margin:14px 0;">alebo e-mailom a heslom</div>
+
+      <form onsubmit="event.preventDefault(); signInWithEmail();">
         <div class="input-group">
-          <label>Váš E-mail (alebo telefón / meno)</label>
-          <input type="text" id="userIdentifier" class="input" required placeholder="napr. vas@email.sk alebo +421 9XX XXX XXX" />
+          <label for="loginEmail">E-mail</label>
+          <input type="email" id="loginEmail" class="input" required autocomplete="email" placeholder="napr. vas@email.sk" />
         </div>
-        <button type="submit" class="btn btn-gold" style="width:100%;justify-content:center;padding:13px;font-size:14px;">
-          🔓 Zobraziť moju vernostnú kartu a body
-        </button>
+        <div class="input-group">
+          <label for="loginPass">Heslo (aspoň 8 znakov)</label>
+          <input type="password" id="loginPass" class="input" required minlength="8" autocomplete="current-password" placeholder="Heslo" />
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button type="submit" class="btn btn-outline" style="flex:1;justify-content:center;">Prihlásiť sa</button>
+          <button type="button" class="btn btn-outline" style="flex:1;justify-content:center;" onclick="registerWithEmail()">Vytvoriť účet</button>
+        </div>
+        <button type="button" onclick="resetPassword()" style="background:none;border:none;color:var(--muted);text-decoration:underline;font-size:12px;margin-top:10px;cursor:pointer;">Zabudnuté heslo</button>
       </form>
+      <p id="loginMsg" role="alert" style="font-size:12px;margin-top:10px;color:var(--red);display:none;"></p>
+
+      <div id="verifyBox" class="hidden" style="margin-top:14px;padding:12px;border:1px solid var(--gold);border-radius:12px;font-size:13px;">
+        <p>📧 Poslali sme vám potvrdzovací e-mail. Kliknite na odkaz v ňom a potom stlačte „Už som potvrdil“.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+          <button type="button" class="btn btn-gold" onclick="checkVerified()">Už som potvrdil</button>
+          <button type="button" class="btn btn-outline" onclick="resendVerification()">Poslať znova</button>
+          <button type="button" class="btn btn-outline" onclick="logout()">Odhlásiť</button>
+        </div>
+      </div>
 
       <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;font-size:12px;">
         <span style="color:var(--muted);">Ešte nemáte rezerváciu?</span>
@@ -417,14 +444,14 @@
           <div>
             <div class="vip-head">
               <div style="display:flex;align-items:center;gap:12px;">
-                <img src="logo_yd.png" alt="YD" style="width:64px;height:48px;object-fit:contain;background:#ffffff;padding:5px 8px;border-radius:10px;border:2px solid var(--gold);box-shadow:0 2px 10px rgba(255,255,255,0.15);" onerror="this.style.display='none'" />
+                <img src="logo_yd_small.webp" alt="YD" style="width:64px;height:48px;object-fit:contain;background:#ffffff;padding:5px 8px;border-radius:10px;border:2px solid var(--gold);box-shadow:0 2px 10px rgba(255,255,255,0.15);" onerror="this.style.display='none'" />
                 <div>
                   <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;">Držiteľ VIP karty</div>
                   <div id="displayName" style="font-size:20px;font-weight:900;color:#fff;">-</div>
                   <div id="displayEmail" style="font-size:12px;color:var(--muted);">-</div>
                 </div>
               </div>
-              <span id="tierBadge" class="tier-badge">BRONZE CLUB</span>
+              <span id="tierBadge" class="tier-badge">🛡️ BRONZOVÝ ČLEN</span>
             </div>
 
             <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-top:10px;">
@@ -455,7 +482,7 @@
           <div style="font-size:14px;font-weight:800;color:var(--gold);">Vaša digitálna karta do mobilu</div>
           <div style="font-size:11px;color:var(--muted);margin-top:2px;">Ukážte QR kód obsluhe v Milhostove 190 alebo pri vyzdvihnutí vozidla</div>
           <div class="qr-img-wrap">
-            <img id="qrCodeImg" src="" alt="QR Kód" style="width:140px;height:140px;display:block;" />
+            <img id="qrCodeImg" src="data:," alt="QR kód vašej vernostnej karty" style="width:140px;height:140px;display:block;" />
           </div>
           <div id="displayCardId" style="font-family:monospace;font-size:13px;font-weight:800;color:var(--text);letter-spacing:1px;">ID: YD-0000</div>
           <button onclick="logout()" class="btn btn-outline" style="margin-top:10px;padding:6px 12px;font-size:11px;">Odhlásiť sa / Zmeniť účet</button>
@@ -523,31 +550,6 @@
       </div>
     </div>
 
-    <!-- REŽIM OBSLUHY (PIN 0750) NA RÝCHLE PRIPÍSANIE BODOV V MILHOSTOVE -->
-    <div id="staffPanel" class="panel hidden" style="margin-top:24px;border-color:var(--gold);">
-      <div class="section-title" style="color:var(--gold);">🔐 Režim obsluhy Yankee Drive – Pripísanie bodov zákazníkovi</div>
-      <div id="staffPinBox" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <input type="password" id="staffPinInput" class="input" placeholder="Zadajte PIN obsluhy (0750)" style="max-width:220px;" />
-        <button class="btn btn-gold" onclick="unlockStaff()">Odomknúť</button>
-      </div>
-      <div id="staffControls" class="hidden" style="margin-top:12px;">
-        <div style="display:grid;grid-template-columns:1.2fr 1fr 0.8fr auto;gap:8px;align-items:center;margin-bottom:10px;">
-          <input type="email" id="staffCustomerEmail" class="input" placeholder="E-mail zákazníka *" />
-          <input type="text" id="staffCustomerName" class="input" placeholder="Meno zákazníka" />
-          <input type="number" id="staffPointsAdd" class="input" placeholder="Body (+)" />
-          <button class="btn btn-gold" onclick="staffAddPoints()">➕ Pripísať body</button>
-        </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;">
-          <button class="btn btn-outline" onclick="quickSetPts(15, 'Vysávanie vozidla (15 €)')">+15 b (Vysávanie)</button>
-          <button class="btn btn-outline" onclick="quickSetPts(30, 'Ozónové čistenie (30 €)')">+30 b (Ozón)</button>
-          <button class="btn btn-outline" onclick="quickSetPts(45, 'Yankee Refresh (45 €)')">+45 b (Yankee Refresh)</button>
-          <button class="btn btn-outline" onclick="quickSetPts(50, 'Hĺbkové tepovanie (50 €)')">+50 b (Tepovanie)</button>
-          <button class="btn btn-outline" onclick="quickSetPts(80, 'Yankee Štandard (80 €)')">+80 b (Yankee Štandard)</button>
-          <button class="btn btn-outline" onclick="quickSetPts(200, 'Yankee Exclusive (200 €)')">+200 b (Yankee Exclusive)</button>
-        </div>
-        <div id="staffStatusMsg" style="margin-top:8px;font-size:12px;color:var(--green);"></div>
-      </div>
-    </div>
   </main>
 
   <footer>
@@ -555,271 +557,151 @@
   </footer>
 
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBym7aue9Fy0oIU00YpwcFQ1j20PO6-VMA",
-      authDomain: "yankee-drive-loyality-card.firebaseapp.com",
-      databaseURL: "https://yankee-drive-loyality-card-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "yankee-drive-loyality-card",
-      storageBucket: "yankee-drive-loyality-card.firebasestorage.app",
-      messagingSenderId: "1071364286187",
-      appId: "1:1071364286187:web:f28668685472ad5fbf40ae",
-      measurementId: "G-TCWH37NLM3"
-    };
-    firebase.initializeApp(firebaseConfig);
+    window.addEventListener("DOMContentLoaded", function () {
+    firebase.initializeApp(window.YD_FIREBASE_CONFIG);
+    const auth = firebase.auth();
     const db = firebase.firestore();
+    window.ydConnectEmulators(auth, db);
+    const REWARD_COSTS = [100, 200, 350, 500];
 
-    let currentUserEmail = localStorage.getItem("yd_live_email") || "";
-    let welcomioCustomers = [];
-    let currentReasonNote = "Čistenie v prevádzke Milhostov";
+    let currentUserEmail = "";
+    let unsubscribeCard = null;
+    let currentData = null;
 
-    async function loadWelcomioBackup() {
+    function showMsg(text, ok) {
+      const el = document.getElementById("loginMsg");
+      el.textContent = text;
+      el.style.color = ok ? "var(--green)" : "var(--red)";
+      el.style.display = text ? "block" : "none";
+    }
+
+    function authErrorText(err) {
+      const code = (err && err.code) || "";
+      const map = {
+        "auth/invalid-email": "Neplatný e-mail.",
+        "auth/email-already-in-use": "Účet s týmto e-mailom už existuje – prihláste sa alebo si obnovte heslo.",
+        "auth/weak-password": "Heslo je príliš slabé (aspoň 8 znakov).",
+        "auth/user-not-found": "Nesprávny e-mail alebo heslo.",
+        "auth/wrong-password": "Nesprávny e-mail alebo heslo.",
+        "auth/invalid-credential": "Nesprávny e-mail alebo heslo.",
+        "auth/invalid-login-credentials": "Nesprávny e-mail alebo heslo.",
+        "auth/too-many-requests": "Príliš veľa pokusov. Skúste to znova neskôr.",
+        "auth/popup-closed-by-user": "Prihlásenie bolo zrušené.",
+        "auth/network-request-failed": "Chýba pripojenie na internet."
+      };
+      return map[code] || "Prihlásenie sa nepodarilo. Skúste to znova.";
+    }
+
+    async function signInWithGoogle() {
+      showMsg("");
+      const provider = new firebase.auth.GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
       try {
-        const r = await fetch("customers_data.json?t=" + Date.now());
-        if (r.ok) {
-          const j = await r.json();
-          welcomioCustomers = j.customers || [];
+        await auth.signInWithPopup(provider);
+      } catch (e) {
+        if (e && (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment")) {
+          await auth.signInWithRedirect(provider);
+        } else {
+          showMsg(authErrorText(e));
         }
-      } catch (e) {}
-    }
-
-    window.addEventListener("DOMContentLoaded", async () => {
-      await loadWelcomioBackup();
-      if (currentUserEmail) {
-        loadUserData(currentUserEmail);
       }
-    });
-
-    function findWelcomioCustomer(query) {
-      const q = query.trim().toLowerCase();
-      return welcomioCustomers.find(c =>
-        (c.email && c.email.toLowerCase() === q) ||
-        (c.phone && c.phone.replace(/\s+/g, "") === q.replace(/\s+/g, "")) ||
-        (c.name && c.name.toLowerCase().includes(q))
-      );
     }
 
-    async function handleLogin(event) {
-      event.preventDefault();
-      const rawInput = document.getElementById("userIdentifier").value.trim();
-      if (!rawInput) return;
-
-      const matched = findWelcomioCustomer(rawInput);
-      const email = (matched && matched.email) ? matched.email.toLowerCase() : rawInput.toLowerCase();
-
-      currentUserEmail = email;
-      localStorage.setItem("yd_live_email", currentUserEmail);
-
+    async function signInWithEmail() {
+      showMsg("");
+      const email = document.getElementById("loginEmail").value.trim();
+      const pass = document.getElementById("loginPass").value;
       try {
-        const userRef = db.collection("customers").doc(email);
-        const doc = await userRef.get();
-        if (!doc.exists) {
-          const initPts = matched ? Number(matched.loyalty_points || 0) : 0;
-          await userRef.set({
-            email: email,
-            name: matched ? matched.name : email.split("@")[0],
-            phone: matched ? (matched.phone || "") : "",
-            city: matched ? (matched.city || "") : "",
-            ordersCount: matched ? Number(matched.orders_count || 0) : 0,
-            totalSpentEur: matched ? Number(matched.total_spent_eur || 0) : 0,
-            welcomioPoints: initPts,
-            bonusPoints: 0,
-            redeemedPoints: 0,
-            points: initPts,
-            historyText: matched && matched.history ? matched.history.join(" | ") : "",
-            createdAt: new Date()
-          });
-        }
-      } catch (e) {}
-
-      loadUserData(email);
-    }
-
-    function updateDashboardUI(data, email) {
-      const matched = findWelcomioCustomer(email);
-      const name = data.name || (matched && matched.name) || email;
-      const pts = Number(data.points !== undefined ? data.points : (matched ? matched.loyalty_points : 0));
-      const ordersCount = Number(data.ordersCount || (matched ? matched.orders_count : 0));
-      const city = data.city || (matched && matched.city) || "Yankee Drive Club";
-      const historyStr = data.historyText || (matched && matched.history ? matched.history.join(" | ") : "");
-
-      document.getElementById("displayName").textContent = name;
-      document.getElementById("displayEmail").textContent = email;
-      document.getElementById("displayPoints").textContent = pts;
-      document.getElementById("displayOrdersCount").textContent = `${ordersCount} ${ordersCount === 1 ? "objednávka" : "objednávky"}`;
-      document.getElementById("displayCity").textContent = city ? `📍 ${city}` : "Pravidlo: 1 € = 1 bod";
-
-      // Tier badge
-      const tierEl = document.getElementById("tierBadge");
-      if (pts >= 250) {
-        tierEl.textContent = "👑 GOLD VIP CLUB";
-      } else if (pts >= 100) {
-        tierEl.textContent = "⭐ SILVER CLUB";
-      } else {
-        tierEl.textContent = "🛡️ BRONZE CLUB";
+        await auth.signInWithEmailAndPassword(email, pass);
+      } catch (e) {
+        showMsg(authErrorText(e));
       }
-
-      // Progress bar to next reward
-      const thresholds = [100, 200, 350, 500];
-      const nextTarget = thresholds.find(t => pts < t) || 500;
-      const pct = Math.min(100, Math.round((pts / nextTarget) * 100));
-      document.getElementById("nextRewardText").textContent =
-        pts >= 500 ? "Dosiahli ste najvyššiu VIP odmenu (500 b)!" : `Do ďalšej odmeny (${nextTarget} b) chýba ešte ${nextTarget - pts} bodov`;
-      document.getElementById("nextRewardPct").textContent = `${pct}%`;
-      document.getElementById("progressBarFill").style.width = `${pct}%`;
-
-      // Highlight unlocked cards
-      [100, 200, 350, 500].forEach(t => {
-        const el = document.getElementById("rewCard" + t);
-        if (el) el.classList.toggle("unlocked", pts >= t);
-      });
-
-      // Render history
-      const histEl = document.getElementById("historyContainer");
-      const items = historyStr ? historyStr.split(" | ").filter(Boolean) : [];
-      if (items.length === 0) {
-        histEl.innerHTML = `<div style="padding:8px 0;">Zatiaľ žiadne zaznamenané objednávky na tento e-mail. Pri ďalšom čistení alebo nákupe na <strong>www.yankeedrive.sk</strong> sa vám body pripíšu automaticky!</div>`;
-      } else {
-        histEl.innerHTML = items.map(line => `
-          <div class="history-item">
-            <span>✅ ${line}</span>
-            <span style="color:var(--gold);font-weight:700;">Započítané v bodoch</span>
-          </div>
-        `).join("");
-      }
-
-      // Render active coupons (saved in localStorage + Firestore)
-      renderCoupons(email, data.lastCouponCode, data.lastCouponName);
     }
 
-    function loadUserData(email) {
-      document.getElementById("loginSection").classList.add("hidden");
-      document.getElementById("dashboardSection").classList.remove("hidden");
-      document.getElementById("staffCustomerEmail").value = email;
-
-      const qrText = encodeURIComponent(`YANKEE-DRIVE-USER:${email}`);
-      document.getElementById("qrCodeImg").src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${qrText}&color=0b0e14`;
-      document.getElementById("displayCardId").textContent = `ID: YD-${Math.abs(hashCode(email)) % 9000 + 1000}`;
-
-      // Initial render from backup
-      updateDashboardUI({}, email);
-
-      // Live Firestore listener
-      db.collection("customers").doc(email).onSnapshot((doc) => {
-        if (doc.exists) {
-          updateDashboardUI(doc.data(), email);
-        }
-      });
-    }
-
-    async function redeemReward(rewardName, cost, prefix) {
-      const userRef = db.collection("customers").doc(currentUserEmail);
-      const doc = await userRef.get();
-      const data = doc.exists ? doc.data() : {};
-      const currentPoints = Number(data.points || 0);
-
-      if (currentPoints < cost) {
-        alert(`Na odmenu "${rewardName}" potrebujete ${cost} bodov. Aktuálne máte ${currentPoints} bodov (chýba ešte ${cost - currentPoints} b).`);
+    async function registerWithEmail() {
+      showMsg("");
+      const email = document.getElementById("loginEmail").value.trim();
+      const pass = document.getElementById("loginPass").value;
+      if (!email || pass.length < 8) {
+        showMsg("Zadajte e-mail a heslo s aspoň 8 znakmi.");
         return;
       }
-
-      const code = `${prefix}-${Math.floor(1000 + Math.random() * 9000)}`;
-      const newPoints = currentPoints - cost;
-      const newRedeemed = Number(data.redeemedPoints || 0) + cost;
-
-      await userRef.set({
-        points: newPoints,
-        redeemedPoints: newRedeemed,
-        lastCouponCode: code,
-        lastCouponName: rewardName
-      }, { merge: true });
-
-      const localCoupons = JSON.parse(localStorage.getItem("yd_coupons_" + currentUserEmail) || "[]");
-      localCoupons.unshift({ code, name: rewardName, date: new Date().toISOString().slice(0, 10) });
-      localStorage.setItem("yd_coupons_" + currentUserEmail, JSON.stringify(localCoupons));
-      renderCoupons(currentUserEmail, code, rewardName);
-
-      alert(`🎉 Gratulujeme! Odmena "${rewardName}" bola aktivovaná.\nVáš unikátny kód: ${code}\nUkážte ho obsluhe Yankee Drive alebo kliknite na tlačidlo Odoslať cez WhatsApp.`);
+      try {
+        const cred = await auth.createUserWithEmailAndPassword(email, pass);
+        auth.languageCode = "sk";
+        await cred.user.sendEmailVerification();
+      } catch (e) {
+        showMsg(authErrorText(e));
+      }
     }
 
-    function renderCoupons(email, lastCode, lastName) {
-      const localCoupons = JSON.parse(localStorage.getItem("yd_coupons_" + email) || "[]");
-      if (lastCode && !localCoupons.some(c => c.code === lastCode)) {
-        localCoupons.unshift({ code: lastCode, name: lastName || "Vernostná odmena", date: "Aktívne" });
-      }
-      const panel = document.getElementById("activeCouponsPanel");
-      const list = document.getElementById("couponsList");
-      if (localCoupons.length === 0) {
-        panel.classList.add("hidden");
+    async function resetPassword() {
+      const email = document.getElementById("loginEmail").value.trim();
+      if (!email) {
+        showMsg("Najprv zadajte svoj e-mail.");
         return;
       }
-      panel.classList.remove("hidden");
-      list.innerHTML = localCoupons.map(c => {
-        const waMsg = encodeURIComponent(`Dobrý deň Yankee Drive, uplatňujem si vernostnú odmenu "${c.name}" (Kód: ${c.code}, účet: ${email}). Prosím o potvrdenie.`);
-        return `
-          <div class="coupon-box">
-            <div>
-              <div style="font-size:14px;font-weight:800;color:#fff;">🎁 ${c.name}</div>
-              <div style="font-size:12px;color:var(--gold);font-family:monospace;margin-top:2px;">KÓD POUKAZU: <strong>${c.code}</strong> • (${c.date})</div>
-            </div>
-            <a href="https://wa.me/421901788110?text=${waMsg}" target="_blank" class="btn btn-green">📲 Uplatniť cez WhatsApp</a>
-          </div>
-        `;
-      }).join("");
-    }
-
-    function toggleStaffPanel() {
-      const p = document.getElementById("staffPanel");
-      p.classList.toggle("hidden");
-      p.scrollIntoView({ behavior: "smooth" });
-    }
-
-    function unlockStaff() {
-      const pin = document.getElementById("staffPinInput").value.trim();
-      if (pin === "0750") {
-        document.getElementById("staffPinBox").classList.add("hidden");
-        document.getElementById("staffControls").classList.remove("hidden");
-      } else {
-        alert("Nesprávny PIN obsluhy.");
+      try {
+        auth.languageCode = "sk";
+        await auth.sendPasswordResetEmail(email);
+        showMsg("Ak účet existuje, poslali sme vám odkaz na zmenu hesla.", true);
+      } catch (e) {
+        showMsg(authErrorText(e));
       }
     }
 
-    function quickSetPts(pts, label) {
-      document.getElementById("staffPointsAdd").value = pts;
-      currentReasonNote = label;
+    async function resendVerification() {
+      if (!auth.currentUser) return;
+      try {
+        auth.languageCode = "sk";
+        await auth.currentUser.sendEmailVerification();
+        showMsg("Potvrdzovací e-mail sme poslali znova.", true);
+      } catch (e) {
+        showMsg(authErrorText(e));
+      }
     }
 
-    async function staffAddPoints() {
-      const email = document.getElementById("staffCustomerEmail").value.trim().toLowerCase();
-      const name = document.getElementById("staffCustomerName").value.trim();
-      const addPts = parseInt(document.getElementById("staffPointsAdd").value || "0", 10);
-      if (!email || !addPts) return;
-
-      const userRef = db.collection("customers").doc(email);
-      const doc = await userRef.get();
-      const data = doc.exists ? doc.data() : {};
-      const curPts = Number(data.points || 0);
-      const curBonus = Number(data.bonusPoints || 0);
-      const curOrders = Number(data.ordersCount || 0);
-      const today = new Date().toISOString().slice(0, 10);
-      const prevHist = data.historyText ? data.historyText + " | " : "";
-      const newHist = `${today}: ${currentReasonNote} (+${addPts} b)` + (prevHist ? " | " + data.historyText : "");
-
-      await userRef.set({
-        email: email,
-        name: name || data.name || email.split("@")[0],
-        points: curPts + addPts,
-        bonusPoints: curBonus + addPts,
-        ordersCount: curOrders + 1,
-        historyText: newHist
-      }, { merge: true });
-
-      document.getElementById("staffStatusMsg").textContent = `✅ Úspešne pripísaných +${addPts} bodov na účet ${email} (Nový zostatok: ${curPts + addPts} b).`;
-      document.getElementById("staffPointsAdd").value = "";
+    async function checkVerified() {
+      if (!auth.currentUser) return;
+      await auth.currentUser.reload();
+      if (auth.currentUser.emailVerified) {
+        await auth.currentUser.getIdToken(true);
+        onUser(auth.currentUser);
+      } else {
+        showMsg("E-mail ešte nie je potvrdený. Skontrolujte aj priečinok Spam.");
+      }
     }
 
-    function logout() {
-      localStorage.removeItem("yd_live_email");
-      location.reload();
+    async function logout() {
+      if (unsubscribeCard) unsubscribeCard();
+      unsubscribeCard = null;
+      currentUserEmail = "";
+      currentData = null;
+      await auth.signOut();
+    }
+
+    auth.onAuthStateChanged((user) => onUser(user));
+
+    function onUser(user) {
+      const login = document.getElementById("loginSection");
+      const dash = document.getElementById("dashboardSection");
+      const verifyBox = document.getElementById("verifyBox");
+      if (!user) {
+        login.classList.remove("hidden");
+        dash.classList.add("hidden");
+        verifyBox.classList.add("hidden");
+        return;
+      }
+      if (!user.emailVerified) {
+        login.classList.remove("hidden");
+        dash.classList.add("hidden");
+        verifyBox.classList.remove("hidden");
+        return;
+      }
+      verifyBox.classList.add("hidden");
+      login.classList.add("hidden");
+      dash.classList.remove("hidden");
+      loadUserData(String(user.email || "").toLowerCase());
     }
 
     function hashCode(str) {
@@ -830,6 +712,182 @@
       }
       return hash;
     }
+
+    function renderQr(text) {
+      // QR kód sa generuje lokálne v prehliadači – e-mail sa neposiela žiadnej tretej strane.
+      const qr = qrcode(0, "M");
+      qr.addData(text);
+      qr.make();
+      document.getElementById("qrCodeImg").src = qr.createDataURL(5, 8);
+    }
+
+    function loadUserData(email) {
+      currentUserEmail = email;
+      renderQr(`YANKEE-DRIVE-USER:${email}`);
+      document.getElementById("displayCardId").textContent = `ID: YD-${Math.abs(hashCode(email)) % 9000 + 1000}`;
+      updateDashboardUI(null, email);
+      if (unsubscribeCard) unsubscribeCard();
+      unsubscribeCard = db.collection("customers").doc(email).onSnapshot(
+        (doc) => updateDashboardUI(doc.exists ? doc.data() : null, email),
+        (err) => {
+          console.error(err);
+          document.getElementById("historyContainer").textContent = "Kartu sa nepodarilo načítať. Skúste sa odhlásiť a prihlásiť znova.";
+        }
+      );
+      loadCoupons(email);
+    }
+
+    function updateDashboardUI(data, email) {
+      currentData = data;
+      const d = data || {};
+      const pts = Number(d.points || 0);
+      const ordersCount = Number(d.ordersCount || 0);
+      document.getElementById("displayName").textContent = d.name || (auth.currentUser && auth.currentUser.displayName) || email;
+      document.getElementById("displayEmail").textContent = email;
+      document.getElementById("displayPoints").textContent = pts;
+      document.getElementById("displayOrdersCount").textContent = `${ordersCount} ${ordersCount === 1 ? "objednávka" : (ordersCount >= 2 && ordersCount <= 4 ? "objednávky" : "objednávok")}`;
+      document.getElementById("displayCity").textContent = d.city ? `📍 ${d.city}` : "Pravidlo: 1 € = 1 bod";
+
+      const tierEl = document.getElementById("tierBadge");
+      if (pts >= 250) tierEl.textContent = "👑 ZLATÝ ČLEN";
+      else if (pts >= 100) tierEl.textContent = "⭐ STRIEBORNÝ ČLEN";
+      else tierEl.textContent = "🛡️ BRONZOVÝ ČLEN";
+
+      const nextTarget = REWARD_COSTS.find((t) => pts < t) || 500;
+      const pct = Math.min(100, Math.round((pts / nextTarget) * 100));
+      document.getElementById("nextRewardText").textContent =
+        pts >= 500 ? "Dosiahli ste najvyššiu odmenu (500 b)!" : `Do ďalšej odmeny (${nextTarget} b) chýba ešte ${nextTarget - pts} bodov`;
+      document.getElementById("nextRewardPct").textContent = `${pct}%`;
+      document.getElementById("progressBarFill").style.width = `${pct}%`;
+      REWARD_COSTS.forEach((t) => {
+        const el = document.getElementById("rewCard" + t);
+        if (el) el.classList.toggle("unlocked", pts >= t);
+      });
+
+      const histEl = document.getElementById("historyContainer");
+      histEl.textContent = "";
+      const items = []
+        .concat(d.historyText ? String(d.historyText).split(" | ") : [])
+        .concat(d.welcomioHistoryText ? String(d.welcomioHistoryText).split(" | ") : [])
+        .filter(Boolean);
+      if (!data) {
+        const p = document.createElement("div");
+        p.style.padding = "8px 0";
+        p.textContent = "Vašu vernostnú kartu sme pod týmto e-mailom zatiaľ nenašli. Body sa zobrazia po prvej objednávke na www.yankeedrive.sk alebo po čistení u nás (obsluhe ukážte QR kód).";
+        histEl.appendChild(p);
+      } else if (items.length === 0) {
+        const p = document.createElement("div");
+        p.style.padding = "8px 0";
+        p.textContent = "Zatiaľ žiadne zaznamenané objednávky. Pri ďalšom čistení alebo nákupe na www.yankeedrive.sk sa vám body pripíšu.";
+        histEl.appendChild(p);
+      } else {
+        items.forEach((line) => {
+          const row = document.createElement("div");
+          row.className = "history-item";
+          const a = document.createElement("span");
+          a.textContent = "✅ " + line;
+          const b = document.createElement("span");
+          b.style.cssText = "color:var(--gold);font-weight:700;";
+          b.textContent = "Započítané v bodoch";
+          row.append(a, b);
+          histEl.appendChild(row);
+        });
+      }
+    }
+
+    function randomCode(len) {
+      const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      const bytes = new Uint8Array(len);
+      crypto.getRandomValues(bytes);
+      return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
+    }
+
+    async function redeemReward(rewardName, cost, prefix) {
+      if (!currentUserEmail || !REWARD_COSTS.includes(cost)) return;
+      if (!currentData) {
+        alert("Vaša vernostná karta zatiaľ nemá žiadne body.");
+        return;
+      }
+      if (!confirm(`Naozaj chcete minúť ${cost} bodov na odmenu „${rewardName}“?`)) return;
+      const customerRef = db.collection("customers").doc(currentUserEmail);
+      const code = `${prefix}-${randomCode(6)}`;
+      const couponRef = db.collection("coupons").doc(code);
+      try {
+        await db.runTransaction(async (tx) => {
+          const snap = await tx.get(customerRef);
+          if (!snap.exists) throw new Error("NO_CARD");
+          const data = snap.data();
+          const currentPoints = Number(data.points || 0);
+          if (currentPoints < cost) throw new Error("NOT_ENOUGH");
+          tx.update(customerRef, {
+            points: currentPoints - cost,
+            redeemedPoints: Number(data.redeemedPoints || 0) + cost,
+            lastCouponCode: code,
+            lastCouponName: rewardName
+          });
+          tx.set(couponRef, {
+            email: currentUserEmail,
+            cost: cost,
+            reward: rewardName,
+            status: "active",
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        });
+        await loadCoupons(currentUserEmail);
+        alert(`🎉 Gratulujeme! Odmena „${rewardName}“ bola aktivovaná.\nVáš kód: ${code}\nUkážte ho obsluhe Yankee Drive alebo ho pošlite cez WhatsApp.`);
+      } catch (e) {
+        console.error(e);
+        if (e.message === "NOT_ENOUGH") {
+          const have = currentData ? Number(currentData.points || 0) : 0;
+          alert(`Na odmenu „${rewardName}“ potrebujete ${cost} bodov. Aktuálne máte ${have} bodov.`);
+        } else {
+          alert("Odmenu sa nepodarilo aktivovať. Skúste to znova alebo nás kontaktujte.");
+        }
+      }
+    }
+
+    async function loadCoupons(email) {
+      const panel = document.getElementById("activeCouponsPanel");
+      const list = document.getElementById("couponsList");
+      let coupons = [];
+      try {
+        const snap = await db.collection("coupons").where("email", "==", email).get();
+        coupons = snap.docs.map((d) => Object.assign({ code: d.id }, d.data()));
+      } catch (e) {
+        console.error(e);
+      }
+      coupons = coupons.filter((c) => c.status === "active");
+      list.textContent = "";
+      if (coupons.length === 0) {
+        panel.classList.add("hidden");
+        return;
+      }
+      panel.classList.remove("hidden");
+      coupons.forEach((c) => {
+        const waMsg = encodeURIComponent(`Dobrý deň Yankee Drive, uplatňujem si vernostnú odmenu "${c.reward}" (kód: ${c.code}). Prosím o potvrdenie.`);
+        const box = document.createElement("div");
+        box.className = "coupon-box";
+        const left = document.createElement("div");
+        const t = document.createElement("div");
+        t.style.cssText = "font-size:14px;font-weight:800;color:#fff;";
+        t.textContent = "🎁 " + c.reward;
+        const k = document.createElement("div");
+        k.style.cssText = "font-size:12px;color:var(--gold);font-family:monospace;margin-top:2px;";
+        k.textContent = "KÓD POUKAZU: " + c.code;
+        left.append(t, k);
+        const a = document.createElement("a");
+        a.href = "https://wa.me/421901788110?text=" + waMsg;
+        a.target = "_blank";
+        a.rel = "noopener";
+        a.className = "btn btn-green";
+        a.textContent = "📲 Uplatniť cez WhatsApp";
+        box.append(left, a);
+        list.appendChild(box);
+      });
+    }
+
+    Object.assign(window, { signInWithGoogle, signInWithEmail, registerWithEmail, resetPassword, resendVerification, checkVerified, logout, redeemReward });
+    });
   </script>
 </body>
 </html>

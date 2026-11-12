@@ -1,0 +1,25 @@
+# Tajné údaje a lokálne nastavenia – nikdy necommitovať
+.env
+.env.*
+*.pem
+*service-account*.json
+firebase-adminsdk*.json
+
+# Exporty s osobnými údajmi zákazníkov – nikdy nedávať do verejného repa
+exports/
+customers_data.json
+yankee_drive_zakaznici.csv
+yankee_drive_objednavky.csv
+*.csv
+
+# Značky denného reportu (teraz cez GitHub Actions cache)
+.report_sent_*
+
+# Systémové a dočasné súbory
+__pycache__/
+*.pyc
+.DS_Store
+node_modules/
+
+# Logy emulátorov Firebase
+*-debug.log

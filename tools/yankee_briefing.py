@@ -123,7 +123,7 @@ def build_html_email(report):
 
   <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 16px 0;" />
   <p style="font-size: 13px; color: #4b5563;">
-    📲 <strong>Rýchly prístup do internej mobilnej aplikácie (PIN: 0750):</strong><br/>
+    📲 <strong>Rýchly prístup do internej mobilnej aplikácie (prihlásenie účtom obsluhy):</strong><br/>
     <a href="https://yankeealpha.github.io/yankee-drive-app/">https://yankeealpha.github.io/yankee-drive-app/</a>
   </p>
 </div>
@@ -182,7 +182,10 @@ def main():
         run_scheduler_20h(args.to)
     elif args.send_email:
         res = send_report_email(args.to)
-        print(json.dumps(res, indent=2, ensure_ascii=False))
+        # Do logu (GitHub Actions logy verejného repa sú verejné!) nevypisujeme obsah
+        # reportu ani osobné údaje – iba stav odoslania.
+        print(json.dumps({"ok": res.get("ok"), "generated_at": res.get("report", {}).get("generated_at")}, ensure_ascii=False))
+        sys.exit(0 if res.get("ok") else 1)
     else:
         rep = collect_report()
         print(json.dumps(rep, indent=2, ensure_ascii=False))
