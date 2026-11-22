@@ -1,0 +1,23 @@
+{
+  "name": "Lili – osobná asistentka",
+  "short_name": "Lili",
+  "description": "Hlasový spúšťač asistentky Lili (Claude) pre majiteľa Yankee Drive",
+  "id": "./lili.html",
+  "start_url": "./lili.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0c0d10",
+  "theme_color": "#0c0d10",
+  "lang": "sk",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "./icons/lili-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/lili-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/lili-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Dobré ráno", "short_name": "Ráno", "url": "./lili.html?akcia=rano", "icons": [{ "src": "./icons/lili-192.png", "sizes": "192x192" }] },
+    { "name": "Nová poznámka", "short_name": "Poznámka", "url": "./lili.html?akcia=poznamka", "icons": [{ "src": "./icons/lili-192.png", "sizes": "192x192" }] },
+    { "name": "Hovor s Lili", "short_name": "Hovor", "url": "./lili.html?akcia=hovor", "icons": [{ "src": "./icons/lili-192.png", "sizes": "192x192" }] }
+  ]
+}

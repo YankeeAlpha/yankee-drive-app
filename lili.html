@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#0c0d10" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Lili</title>
+  <link rel="manifest" href="./lili-manifest.json" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/lili-192.png" />
+  <style>
+    :root {
+      --bg: #0c0d10; --card: #151820; --elevated: #1e222d; --border: #2a2f3d;
+      --text: #f3f4f6; --muted: #9ca3af; --amber: #f59e0b; --amber-soft: rgba(245,158,11,.15);
+      --green: #10b981; --red: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      background: var(--bg); color: var(--text); min-height: 100dvh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+      display: flex; flex-direction: column; gap: 16px; max-width: 520px; margin: 0 auto;
+    }
+    header { display: flex; align-items: center; gap: 12px; }
+    header img { width: 40px; height: 40px; border-radius: 50%; }
+    header h1 { font-size: 22px; }
+    header p { color: var(--muted); font-size: 13px; }
+    .mic-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 8px 0; }
+    #mic {
+      width: 132px; height: 132px; border-radius: 50%; border: none; cursor: pointer;
+      background: var(--amber); color: var(--bg); display: grid; place-items: center;
+      box-shadow: 0 0 0 0 var(--amber-soft); transition: transform .15s;
+    }
+    #mic:active { transform: scale(.96); }
+    #mic.on { background: var(--red); animation: pulse 1.4s infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,.45); } 100% { box-shadow: 0 0 0 28px rgba(239,68,68,0); } }
+    #mic svg { width: 56px; height: 56px; }
+    #status { color: var(--muted); font-size: 14px; min-height: 20px; text-align: center; }
+    textarea {
+      width: 100%; min-height: 110px; resize: vertical; background: var(--card); color: var(--text);
+      border: 1px solid var(--border); border-radius: 14px; padding: 14px; font: inherit; font-size: 16px;
+    }
+    textarea:focus, input:focus { outline: 2px solid var(--amber); outline-offset: 1px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+      background: var(--elevated); color: var(--text); border: 1px solid var(--border);
+      border-radius: 999px; padding: 9px 14px; font-size: 14px; cursor: pointer;
+    }
+    .btn {
+      width: 100%; border: none; border-radius: 14px; padding: 16px; font-size: 17px; font-weight: 600; cursor: pointer;
+    }
+    .primary { background: var(--amber); color: var(--bg); }
+    .secondary { background: var(--elevated); color: var(--text); border: 1px solid var(--border); font-weight: 500; font-size: 15px; padding: 13px; }
+    .row { display: flex; gap: 8px; }
+    .row .btn { flex: 1; }
+    details { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; }
+    summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+    label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 6px; }
+    input[type=url] {
+      width: 100%; background: var(--elevated); color: var(--text); border: 1px solid var(--border);
+      border-radius: 10px; padding: 11px; font-size: 15px;
+    }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
+    #toast {
+      position: fixed; left: 16px; right: 16px; bottom: max(20px, env(safe-area-inset-bottom)); margin: 0 auto; max-width: 488px;
+      background: var(--elevated); border: 1px solid var(--amber); color: var(--text); border-radius: 12px;
+      padding: 12px 14px; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .2s;
+    }
+    #toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="./icons/lili-192.png" alt="" />
+    <div>
+      <h1>Lili</h1>
+      <p>Ťukni, povedz, pošli do Claude</p>
+    </div>
+  </header>
+
+  <div class="mic-wrap">
+    <button id="mic" aria-label="Diktovať">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a1 1 0 1 1 2 0 7 7 0 0 1-6 6.93V21h3a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2h3v-2.07A7 7 0 0 1 5 12a1 1 0 1 1 2 0 5 5 0 0 0 10 0Z"/></svg>
+    </button>
+    <div id="status">Ťukni na mikrofón a hovor</div>
+  </div>
+
+  <textarea id="text" placeholder="Sem sa zapíše, čo povieš. Môžeš aj písať."></textarea>
+
+  <div class="chips">
+    <button class="chip" data-text="Dobré ráno">☀️ Dobré ráno</button>
+    <button class="chip" data-prefix="Zapíš si poznámku: ">📝 Poznámka</button>
+    <button class="chip" data-text="Čo mám dnes v kalendári?">📅 Dnes</button>
+    <button class="chip" data-prefix="Priprav koncept e-mailu: ">✉️ E-mail</button>
+    <button class="chip" data-text="Sú nové recenzie alebo komentáre?">⭐ Recenzie</button>
+    <button class="chip" data-text="Prečítaj moje poznámky">📂 Poznámky</button>
+  </div>
+
+  <button id="send" class="btn primary">Poslať Lili (Claude)</button>
+  <div class="row">
+    <button id="talk" class="btn secondary">🎙️ Hovor v Claude</button>
+    <button id="gemini" class="btn secondary">Záloha: Gemini</button>
+  </div>
+
+  <details id="settings">
+    <summary>⚙️ Nastavenia</summary>
+    <label for="projectUrl">Odkaz na projekt Lili v Claude</label>
+    <input id="projectUrl" type="url" inputmode="url" placeholder="https://claude.ai/project/..." />
+    <p class="hint">V Claude otvor projekt Lili, skopíruj adresu z prehliadača a vlož ju sem. Bez odkazu sa otvorí nový chat v Claude bez pokynov Lili.</p>
+    <label for="gemUrl">Odkaz na Gem Lili v Gemini (nepovinné)</label>
+    <input id="gemUrl" type="url" inputmode="url" placeholder="https://gemini.google.com/gem/..." />
+    <p class="hint">Odkazy sa ukladajú len v tomto mobile.</p>
+  </details>
+
+  <div id="toast" role="status"></div>
+
+  <script>
+    (function () {
+      const $ = (id) => document.getElementById(id);
+      const text = $("text"), mic = $("mic"), status = $("status");
+
+      // ---------- nastavenia (len v tomto mobile) ----------
+      const store = {
+        get(k) { try { return localStorage.getItem(k) || ""; } catch (e) { return ""; } },
+        set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+      };
+      const fields = { projectUrl: "lili.projectUrl", gemUrl: "lili.gemUrl" };
+      Object.entries(fields).forEach(([id, key]) => {
+        $(id).value = store.get(key);
+        $(id).addEventListener("change", () => { store.set(key, $(id).value.trim()); toast("Uložené."); });
+      });
+      const validUrl = (v, host) => { try { const u = new URL(v); return u.protocol === "https:" && u.hostname === host; } catch (e) { return false; } };
+      const projectUrl = () => { const v = $("projectUrl").value.trim(); return validUrl(v, "claude.ai") ? v : ""; };
+      const gemUrl = () => { const v = $("gemUrl").value.trim(); return validUrl(v, "gemini.google.com") ? v : ""; };
+
+      let toastTimer;
+      function toast(msg) {
+        const t = $("toast"); t.textContent = msg; t.classList.add("show");
+        clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 3500);
+      }
+
+      // ---------- diktovanie (Chrome na Androide, slovenčina) ----------
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      let rec = null, listening = false, base = "";
+      if (!SR) {
+        status.textContent = "Diktovanie tu nefunguje – použi mikrofón na klávesnici.";
+      } else {
+        rec = new SR();
+        rec.lang = "sk-SK";
+        rec.interimResults = true;
+        rec.continuous = false;
+        rec.onstart = () => { listening = true; mic.classList.add("on"); status.textContent = "Počúvam…"; };
+        rec.onresult = (e) => {
+          let s = "";
+          for (let i = 0; i < e.results.length; i++) s += e.results[i][0].transcript;
+          text.value = (base + s).trimStart();
+        };
+        rec.onerror = (e) => {
+          status.textContent = e.error === "not-allowed"
+            ? "Povoľ mikrofón: ťukni na zámok vedľa adresy → Povolenia."
+            : (e.error === "no-speech" ? "Nič som nepočula, skús znova." : "Diktovanie zlyhalo, skús znova.");
+        };
+        rec.onend = () => {
+          listening = false; mic.classList.remove("on");
+          if (status.textContent === "Počúvam…") status.textContent = text.value ? "Hotovo – skontroluj a pošli Lili." : "Ťukni na mikrofón a hovor";
+        };
+      }
+      function startListening() {
+        if (!rec || listening) return;
+        base = text.value ? text.value.replace(/\s*$/, " ") : "";
+        try { rec.start(); } catch (e) { status.textContent = "Ťukni na mikrofón a hovor"; }
+      }
+      mic.addEventListener("click", () => { listening ? rec.stop() : startListening(); });
+
+      // ---------- rýchle príkazy ----------
+      document.querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => {
+        if (c.dataset.text) { text.value = c.dataset.text; status.textContent = "Pošli Lili tlačidlom nižšie."; }
+        else { text.value = c.dataset.prefix; text.focus(); startListening(); }
+      }));
+
+      // ---------- odoslanie ----------
+      async function copy(s) {
+        try { await navigator.clipboard.writeText(s); return true; } catch (e) { return false; }
+      }
+      function open(url) {
+        const w = window.open(url, "_blank", "noopener");
+        if (!w) location.href = url;
+      }
+      $("send").addEventListener("click", async () => {
+        const msg = text.value.trim();
+        if (!msg) { toast("Najprv povedz alebo napíš, čo má Lili urobiť."); return; }
+        const p = projectUrl();
+        if (p) {
+          const ok = await copy(msg);
+          toast(ok ? "Text je v schránke – v Claude podrž pole správy → Vložiť." : "Skopíruj text ručne, schránka nie je povolená.");
+          setTimeout(() => open(p), 600);
+        } else {
+          open("https://claude.ai/new?q=" + encodeURIComponent(msg));
+        }
+      });
+      $("talk").addEventListener("click", () => {
+        const p = projectUrl();
+        if (!p) toast("Tip: v Nastaveniach vlož odkaz na projekt Lili.");
+        open(p || "https://claude.ai/new");
+      });
+      $("gemini").addEventListener("click", async () => {
+        const msg = text.value.trim();
+        if (msg) { const ok = await copy(msg); if (ok) toast("Text je v schránke – v Gemini ho vlož."); }
+        setTimeout(() => open(gemUrl() || "https://gemini.google.com/app"), msg ? 600 : 0);
+      });
+
+      // ---------- skratky z ikony (podrž ikonu Lili na ploche) ----------
+      const akcia = new URLSearchParams(location.search).get("akcia");
+      if (akcia === "rano") { text.value = "Dobré ráno"; status.textContent = "Pošli Lili tlačidlom nižšie."; }
+      else if (akcia === "poznamka") { text.value = "Zapíš si poznámku: "; status.textContent = "Ťukni na mikrofón a nadiktuj poznámku"; }
+      else if (akcia === "hovor") { $("talk").click(); }
+
+      if (!projectUrl()) $("settings").open = true;
+
+      if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
+    })();
+  </script>
+</body>
+</html>
