@@ -1,7 +1,7 @@
 {
   "name": "Lili – osobná asistentka",
   "short_name": "Lili",
-  "description": "Hlasový spúšťač asistentky Lili (Claude) pre majiteľa Yankee Drive",
+  "description": "Osobná asistentka Lili (Claude a Gemini) pre majiteľa Yankee Drive",
   "id": "./lili.html",
   "start_url": "./lili.html",
   "scope": "./",
@@ -17,7 +17,7 @@
   ],
   "shortcuts": [
     { "name": "Dobré ráno", "short_name": "Ráno", "url": "./lili.html?akcia=rano", "icons": [{ "src": "./icons/lili-192.png", "sizes": "192x192" }] },
-    { "name": "Nová poznámka", "short_name": "Poznámka", "url": "./lili.html?akcia=poznamka", "icons": [{ "src": "./icons/lili-192.png", "sizes": "192x192" }] },
+    { "name": "Pripomienka", "short_name": "Pripomeň", "url": "./lili.html?akcia=poznamka", "icons": [{ "src": "./icons/lili-192.png", "sizes": "192x192" }] },
     { "name": "Hovor s Lili", "short_name": "Hovor", "url": "./lili.html?akcia=hovor", "icons": [{ "src": "./icons/lili-192.png", "sizes": "192x192" }] }
   ]
 }
