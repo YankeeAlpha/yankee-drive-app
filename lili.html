@@ -2,7 +2,7 @@
 <html lang="sk">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
   <meta name="robots" content="noindex, nofollow" />
   <meta name="theme-color" content="#0c0d10" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -16,56 +16,90 @@
       --green: #10b981; --red: #ef4444;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; }
     body {
-      background: var(--bg); color: var(--text); min-height: 100dvh;
+      background: var(--bg); color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
-      display: flex; flex-direction: column; gap: 16px; max-width: 520px; margin: 0 auto;
+      display: flex; flex-direction: column; max-width: 640px; margin: 0 auto; height: 100dvh;
     }
-    header { display: flex; align-items: center; gap: 12px; }
-    header img { width: 40px; height: 40px; border-radius: 50%; }
-    header h1 { font-size: 22px; }
-    header p { color: var(--muted); font-size: 13px; }
-    .mic-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 8px 0; }
-    #mic {
-      width: 132px; height: 132px; border-radius: 50%; border: none; cursor: pointer;
-      background: var(--amber); color: var(--bg); display: grid; place-items: center;
-      box-shadow: 0 0 0 0 var(--amber-soft); transition: transform .15s;
+    header {
+      display: flex; align-items: center; gap: 10px;
+      padding: max(12px, env(safe-area-inset-top)) 16px 10px; border-bottom: 1px solid var(--border);
     }
-    #mic:active { transform: scale(.96); }
-    #mic.on { background: var(--red); animation: pulse 1.4s infinite; }
-    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,.45); } 100% { box-shadow: 0 0 0 28px rgba(239,68,68,0); } }
-    #mic svg { width: 56px; height: 56px; }
-    #status { color: var(--muted); font-size: 14px; min-height: 20px; text-align: center; }
-    textarea {
-      width: 100%; min-height: 110px; resize: vertical; background: var(--card); color: var(--text);
-      border: 1px solid var(--border); border-radius: 14px; padding: 14px; font: inherit; font-size: 16px;
+    header img { width: 36px; height: 36px; border-radius: 50%; }
+    header h1 { font-size: 19px; flex: 1; }
+    .seg { display: flex; background: var(--elevated); border: 1px solid var(--border); border-radius: 999px; padding: 3px; }
+    .seg button {
+      border: none; background: none; color: var(--muted); font-size: 13px; font-weight: 600;
+      padding: 6px 11px; border-radius: 999px; cursor: pointer;
     }
-    textarea:focus, input:focus { outline: 2px solid var(--amber); outline-offset: 1px; }
-    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .seg button.on { background: var(--amber); color: var(--bg); }
+    .icon-btn { background: none; border: none; color: var(--muted); font-size: 22px; cursor: pointer; padding: 4px; }
+
+    #chat { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+    .msg { max-width: 86%; padding: 10px 13px; border-radius: 16px; line-height: 1.45; font-size: 15.5px; word-wrap: break-word; }
+    .msg.user { align-self: flex-end; background: var(--amber); color: var(--bg); border-bottom-right-radius: 5px; }
+    .msg.lili { align-self: flex-start; background: var(--card); border: 1px solid var(--border); border-bottom-left-radius: 5px; }
+    .msg.err { align-self: center; background: rgba(239,68,68,.12); border: 1px solid var(--red); font-size: 14px; max-width: 100%; }
+    .msg .meta { display: block; font-size: 11px; color: var(--muted); margin-top: 5px; }
+    .msg ul { padding-left: 18px; margin: 4px 0; }
+    .msg p + p { margin-top: 6px; }
+    .typing span { display: inline-block; width: 7px; height: 7px; margin: 0 2px; border-radius: 50%; background: var(--muted); animation: blink 1.2s infinite; }
+    .typing span:nth-child(2) { animation-delay: .2s; } .typing span:nth-child(3) { animation-delay: .4s; }
+    @keyframes blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+    .empty { margin: auto; text-align: center; color: var(--muted); font-size: 14px; line-height: 1.6; padding: 20px; }
+    .empty b { color: var(--text); font-size: 17px; display: block; margin-bottom: 6px; }
+
+    .chips { display: flex; gap: 8px; overflow-x: auto; padding: 8px 16px 0; scrollbar-width: none; }
+    .chips::-webkit-scrollbar { display: none; }
     .chip {
-      background: var(--elevated); color: var(--text); border: 1px solid var(--border);
-      border-radius: 999px; padding: 9px 14px; font-size: 14px; cursor: pointer;
+      flex: none; background: var(--elevated); color: var(--text); border: 1px solid var(--border);
+      border-radius: 999px; padding: 8px 13px; font-size: 13.5px; cursor: pointer;
     }
-    .btn {
-      width: 100%; border: none; border-radius: 14px; padding: 16px; font-size: 17px; font-weight: 600; cursor: pointer;
+    .composer { display: flex; align-items: flex-end; gap: 8px; padding: 10px 16px max(12px, env(safe-area-inset-bottom)); }
+    textarea#text {
+      flex: 1; min-height: 46px; max-height: 140px; resize: none; background: var(--card); color: var(--text);
+      border: 1px solid var(--border); border-radius: 23px; padding: 12px 16px; font: inherit; font-size: 16px; line-height: 1.35;
     }
-    .primary { background: var(--amber); color: var(--bg); }
-    .secondary { background: var(--elevated); color: var(--text); border: 1px solid var(--border); font-weight: 500; font-size: 15px; padding: 13px; }
-    .row { display: flex; gap: 8px; }
-    .row .btn { flex: 1; }
-    details { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; }
-    summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+    textarea:focus, input:focus, select:focus { outline: 2px solid var(--amber); outline-offset: 1px; }
+    .round {
+      flex: none; width: 46px; height: 46px; border-radius: 50%; border: none; cursor: pointer;
+      display: grid; place-items: center; background: var(--elevated); color: var(--text);
+    }
+    .round svg { width: 22px; height: 22px; }
+    #mic.on { background: var(--red); color: #fff; animation: pulse 1.4s infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,.45); } 100% { box-shadow: 0 0 0 14px rgba(239,68,68,0); } }
+    #send { background: var(--amber); color: var(--bg); }
+    #send:disabled { opacity: .45; }
+
+    /* nastavenia */
+    #settings {
+      position: fixed; inset: 0; background: var(--bg); overflow-y: auto; display: none; z-index: 10;
+      padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+    }
+    #settings.open { display: block; }
+    #settings .inner { max-width: 600px; margin: 0 auto; }
+    #settings h2 { font-size: 20px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    #settings h3 { font-size: 15px; margin: 22px 0 4px; color: var(--amber); }
     label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 6px; }
-    input[type=url] {
+    input[type=url], input[type=password], input[type=text], select, textarea.set {
       width: 100%; background: var(--elevated); color: var(--text); border: 1px solid var(--border);
-      border-radius: 10px; padding: 11px; font-size: 15px;
+      border-radius: 10px; padding: 11px; font-size: 15px; font-family: inherit;
     }
-    .hint { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
+    textarea.set { min-height: 120px; resize: vertical; }
+    .check { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 15px; color: var(--text); }
+    .check input { width: 20px; height: 20px; accent-color: var(--amber); }
+    .hint { font-size: 12.5px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+    .hint a { color: var(--amber); }
+    .btn { width: 100%; border: none; border-radius: 12px; padding: 13px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 12px; }
+    .btn.secondary { background: var(--elevated); color: var(--text); border: 1px solid var(--border); }
+    .btn.danger { background: none; color: var(--red); border: 1px solid var(--red); }
+    .btn.primary { background: var(--amber); color: var(--bg); }
+
     #toast {
-      position: fixed; left: 16px; right: 16px; bottom: max(20px, env(safe-area-inset-bottom)); margin: 0 auto; max-width: 488px;
+      position: fixed; left: 16px; right: 16px; top: max(70px, calc(env(safe-area-inset-top) + 60px)); margin: 0 auto; max-width: 560px;
       background: var(--elevated); border: 1px solid var(--amber); color: var(--text); border-radius: 12px;
-      padding: 12px 14px; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .2s;
+      padding: 11px 14px; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 20;
     }
     #toast.show { opacity: 1; }
   </style>
@@ -73,150 +107,366 @@
 <body>
   <header>
     <img src="./icons/lili-192.png" alt="" />
-    <div>
-      <h1>Lili</h1>
-      <p>Ťukni, povedz, pošli do Claude</p>
+    <h1>Lili</h1>
+    <div class="seg" role="group" aria-label="Mozog Lili">
+      <button data-p="claude">Claude</button>
+      <button data-p="gemini">Gemini</button>
     </div>
+    <button class="icon-btn" id="openSettings" aria-label="Nastavenia">⚙️</button>
   </header>
 
-  <div class="mic-wrap">
-    <button id="mic" aria-label="Diktovať">
-      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a1 1 0 1 1 2 0 7 7 0 0 1-6 6.93V21h3a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2h3v-2.07A7 7 0 0 1 5 12a1 1 0 1 1 2 0 5 5 0 0 0 10 0Z"/></svg>
-    </button>
-    <div id="status">Ťukni na mikrofón a hovor</div>
-  </div>
-
-  <textarea id="text" placeholder="Sem sa zapíše, čo povieš. Môžeš aj písať."></textarea>
+  <main id="chat" aria-live="polite"></main>
 
   <div class="chips">
-    <button class="chip" data-text="Dobré ráno">☀️ Dobré ráno</button>
-    <button class="chip" data-prefix="Zapíš si poznámku: ">📝 Poznámka</button>
-    <button class="chip" data-text="Čo mám dnes v kalendári?">📅 Dnes</button>
-    <button class="chip" data-prefix="Priprav koncept e-mailu: ">✉️ E-mail</button>
-    <button class="chip" data-text="Sú nové recenzie alebo komentáre?">⭐ Recenzie</button>
-    <button class="chip" data-text="Prečítaj moje poznámky">📂 Poznámky</button>
+    <button class="chip" data-text="Dobré ráno! Naplánuj mi dnešný deň.">☀️ Ráno</button>
+    <button class="chip" data-prefix="Priprav mi koncept e-mailu: ">✉️ E-mail</button>
+    <button class="chip" data-prefix="Napíš príspevok na Facebook a Instagram o: ">📣 Príspevok</button>
+    <button class="chip" data-prefix="Navrhni odpoveď na túto recenziu: ">⭐ Recenzia</button>
+    <button class="chip" data-prefix="Pripomeň mi: ">⏰ Pripomeň</button>
+    <button class="chip" data-prefix="Nákupný zoznam: ">🛒 Nákup</button>
+    <button class="chip" id="openClaude">↗ Claude app</button>
+  </div>
+  <div class="composer">
+    <button class="round" id="mic" aria-label="Hovoriť">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a1 1 0 1 1 2 0 7 7 0 0 1-6 6.93V21h3a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2h3v-2.07A7 7 0 0 1 5 12a1 1 0 1 1 2 0 5 5 0 0 0 10 0Z"/></svg>
+    </button>
+    <textarea id="text" rows="1" placeholder="Napíš alebo povedz Lili…"></textarea>
+    <button class="round" id="send" aria-label="Odoslať">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z"/></svg>
+    </button>
   </div>
 
-  <button id="send" class="btn primary">Poslať Lili (Claude)</button>
-  <div class="row">
-    <button id="talk" class="btn secondary">🎙️ Hovor v Claude</button>
-    <button id="gemini" class="btn secondary">Záloha: Gemini</button>
-  </div>
+  <section id="settings" aria-label="Nastavenia">
+    <div class="inner">
+      <h2>Nastavenia <button class="icon-btn" id="closeSettings" aria-label="Zavrieť">✕</button></h2>
+      <p class="hint">Všetko sa ukladá len v tomto mobile. Kľúče nikomu neposielaj a nikam inam ich nevkladaj.</p>
 
-  <details id="settings">
-    <summary>⚙️ Nastavenia</summary>
-    <label for="projectUrl">Odkaz na projekt Lili v Claude</label>
-    <input id="projectUrl" type="url" inputmode="url" placeholder="https://claude.ai/project/..." />
-    <p class="hint">V Claude otvor projekt Lili, skopíruj adresu z prehliadača a vlož ju sem. Bez odkazu sa otvorí nový chat v Claude bez pokynov Lili.</p>
-    <label for="gemUrl">Odkaz na Gem Lili v Gemini (nepovinné)</label>
-    <input id="gemUrl" type="url" inputmode="url" placeholder="https://gemini.google.com/gem/..." />
-    <p class="hint">Odkazy sa ukladajú len v tomto mobile.</p>
-  </details>
+      <h3>Gemini (zadarmo)</h3>
+      <label for="geminiKey">Kľúč Gemini API</label>
+      <input id="geminiKey" type="password" autocomplete="off" placeholder="AIza…" />
+      <p class="hint">Získaš ho zadarmo na <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> → Create API key. Na bezplatnom pláne môže Google správy použiť na zlepšovanie služieb – nepíš sem nič citlivé (heslá, čísla kariet, zdravie).</p>
+
+      <h3>Claude (platené podľa použitia)</h3>
+      <label for="claudeKey">Kľúč Claude API</label>
+      <input id="claudeKey" type="password" autocomplete="off" placeholder="sk-ant-…" />
+      <p class="hint">Vytvoríš ho na <a href="https://platform.claude.com/settings/keys" target="_blank" rel="noopener">platform.claude.com</a> (Settings → API keys). Kredit si nabíješ vopred v časti Billing – nad kredit nikdy nezaplatíš. Predplatné Claude sa sem nepočíta.</p>
+      <label for="claudeModel">Model</label>
+      <select id="claudeModel">
+        <option value="claude-opus-5-5">Opus 5.5 – najmúdrejší (cca 1 cent za správu)</option>
+        <option value="claude-sonnet-5-5">Sonnet 5.5 – rýchly a lacnejší</option>
+        <option value="claude-haiku-5-5">Haiku 5.5 – najlacnejší (zlomok centu)</option>
+      </select>
+
+      <h3>Hlas</h3>
+      <label class="check"><input type="checkbox" id="speak" /> Lili odpovedá nahlas</label>
+      <label class="check"><input type="checkbox" id="autoSend" /> Po dohovorení správu hneď odoslať</label>
+
+      <h3>Čo má Lili vedieť</h3>
+      <label for="extra">Doplňujúce informácie (napr. dôležité časti z FIRMA.md: cenník, otváracie hodiny, adresy)</label>
+      <textarea id="extra" class="set" placeholder="Napr.: Otvorené Po–So 8:00–18:00. Ručné umytie od 15 €…"></textarea>
+      <p class="hint">Neukladaj sem heslá ani osobné údaje zákazníkov.</p>
+
+      <h3>Odkazy</h3>
+      <label for="projectUrl">Projekt Lili v Claude (tlačidlo „↗ Claude app“)</label>
+      <input id="projectUrl" type="url" inputmode="url" placeholder="https://claude.ai/project/..." />
+      <p class="hint">V apke Lili nemá prístup k Zoho, Gmailu, kalendáru ani poznámkam na Disku. Na tieto úlohy ťukni na „↗ Claude app“.</p>
+
+      <button class="btn danger" id="clearChat">Vymazať rozhovor</button>
+      <button class="btn primary" id="doneSettings">Hotovo</button>
+    </div>
+  </section>
 
   <div id="toast" role="status"></div>
 
   <script>
     (function () {
       const $ = (id) => document.getElementById(id);
-      const text = $("text"), mic = $("mic"), status = $("status");
+      const chat = $("chat"), text = $("text"), mic = $("mic"), sendBtn = $("send");
 
-      // ---------- nastavenia (len v tomto mobile) ----------
+      // ---------- úložisko len v tomto mobile ----------
       const store = {
-        get(k) { try { return localStorage.getItem(k) || ""; } catch (e) { return ""; } },
-        set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+        get(k, d = "") { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } },
+        set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+        del(k) { try { localStorage.removeItem(k); } catch (e) {} }
       };
-      const fields = { projectUrl: "lili.projectUrl", gemUrl: "lili.gemUrl" };
-      Object.entries(fields).forEach(([id, key]) => {
-        $(id).value = store.get(key);
-        $(id).addEventListener("change", () => { store.set(key, $(id).value.trim()); toast("Uložené."); });
+      const S = {
+        geminiKey: "lili.geminiKey", claudeKey: "lili.claudeKey", claudeModel: "lili.claudeModel",
+        extra: "lili.extra", projectUrl: "lili.projectUrl"
+      };
+      Object.entries(S).forEach(([id, key]) => {
+        const el = $(id); const v = store.get(key); if (v) el.value = v;
+        el.addEventListener("change", () => store.set(key, el.value.trim()));
       });
-      const validUrl = (v, host) => { try { const u = new URL(v); return u.protocol === "https:" && u.hostname === host; } catch (e) { return false; } };
-      const projectUrl = () => { const v = $("projectUrl").value.trim(); return validUrl(v, "claude.ai") ? v : ""; };
-      const gemUrl = () => { const v = $("gemUrl").value.trim(); return validUrl(v, "gemini.google.com") ? v : ""; };
+      [["speak", "lili.speak", "0"], ["autoSend", "lili.autoSend", "1"]].forEach(([id, key, d]) => {
+        $(id).checked = store.get(key, d) === "1";
+        $(id).addEventListener("change", () => store.set(key, $(id).checked ? "1" : "0"));
+      });
+
+      let provider = store.get("lili.provider", "gemini");
+      function setProvider(p) {
+        provider = p; store.set("lili.provider", p);
+        document.querySelectorAll(".seg button").forEach((b) => b.classList.toggle("on", b.dataset.p === p));
+      }
+      document.querySelectorAll(".seg button").forEach((b) => b.addEventListener("click", () => {
+        setProvider(b.dataset.p); toast(b.dataset.p === "claude" ? "Lili beží na Claude." : "Lili beží na Gemini (zadarmo).");
+      }));
+      setProvider(provider);
 
       let toastTimer;
       function toast(msg) {
         const t = $("toast"); t.textContent = msg; t.classList.add("show");
-        clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 3500);
+        clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 3000);
       }
 
-      // ---------- diktovanie (Chrome na Androide, slovenčina) ----------
+      // ---------- nastavenia ----------
+      const openSettings = () => $("settings").classList.add("open");
+      const closeSettings = () => { $("settings").classList.remove("open"); text.focus(); };
+      $("openSettings").addEventListener("click", openSettings);
+      $("closeSettings").addEventListener("click", closeSettings);
+      $("doneSettings").addEventListener("click", closeSettings);
+      $("clearChat").addEventListener("click", () => {
+        if (!confirm("Naozaj vymazať celý rozhovor v tomto mobile?")) return;
+        history = []; saveHistory(); render(); closeSettings(); toast("Rozhovor vymazaný.");
+      });
+      $("openClaude").addEventListener("click", () => {
+        let u = store.get(S.projectUrl);
+        try { if (new URL(u).hostname !== "claude.ai") u = ""; } catch (e) { u = ""; }
+        window.open(u || "https://claude.ai/new", "_blank", "noopener");
+      });
+
+      // ---------- história rozhovoru ----------
+      // položka: { role: "user"|"lili", text, via?, claudeContent? }
+      let history = [];
+      try { history = JSON.parse(store.get("lili.history", "[]")) || []; } catch (e) { history = []; }
+      function saveHistory() {
+        history = history.slice(-60);
+        store.set("lili.history", JSON.stringify(history));
+      }
+
+      function esc(s) { return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+      function fmt(s) {
+        const lines = esc(s).split(/\n/);
+        let html = "", inList = false;
+        for (const raw of lines) {
+          const line = raw.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<i>$2</i>").replace(/^#{1,4}\s*/, "");
+          const li = line.match(/^\s*(?:[-•*]|\d+[.)])\s+(.*)/);
+          if (li) { if (!inList) { html += "<ul>"; inList = true; } html += "<li>" + li[1] + "</li>"; continue; }
+          if (inList) { html += "</ul>"; inList = false; }
+          if (line.trim()) html += "<p>" + line + "</p>";
+        }
+        if (inList) html += "</ul>";
+        return html;
+      }
+      function bubble(m) {
+        const d = document.createElement("div");
+        d.className = "msg " + m.role;
+        if (m.role === "user") d.textContent = m.text;
+        else d.innerHTML = fmt(m.text) + (m.via ? '<span class="meta">' + esc(m.via) + "</span>" : "");
+        return d;
+      }
+      function render() {
+        chat.innerHTML = "";
+        if (!history.length) {
+          chat.innerHTML = '<div class="empty"><b>Ahoj, som Lili.</b>Napíš mi alebo ťukni na mikrofón a povedz, s čím pomôcť – firma aj súkromie.<br>Hore si vyber, či mám bežať na Gemini (zadarmo) alebo na Claude.</div>';
+          return;
+        }
+        history.forEach((m) => chat.appendChild(bubble(m)));
+        chat.scrollTop = chat.scrollHeight;
+      }
+      function showError(msg) {
+        const d = document.createElement("div"); d.className = "msg err"; d.textContent = msg;
+        chat.appendChild(d); chat.scrollTop = chat.scrollHeight;
+      }
+
+      // ---------- pokyny pre Lili ----------
+      function systemPrompt() {
+        const now = new Date();
+        const extra = store.get(S.extra).trim();
+        return [
+          "Si Lili, osobná asistentka majiteľa firmy Yankee Drive s. r. o. (ručné umývanie áut, autodetailing, predaj autokozmetiky, Trebišov a Michalovce). Staráš sa o firmu aj o jeho súkromný život.",
+          "Vždy po slovensky, tykaj. Krátko a vecne, bez zbytočných úvodov. Keď odpovedáš na hlasovú správu, stačia dve-tri vety; podrobnosti ponúkni.",
+          "Firma: návrhy e-mailov a odpovedí zákazníkom, príspevky na sociálne siete, odpovede na recenzie, nápady na marketing a akcie. Podpis vo firemných e-mailoch: „S pozdravom, Yankee Drive, 0940 247 133“. Firma nie je platiteľ DPH.",
+          "Súkromie: plánovanie dňa a týždňa, pripomienky, nákupné zoznamy, rodinné veci, súkromné e-maily (bez firemného podpisu), rozpočet domácnosti, nápady. Súkromné a firemné veci nemiešaj; keď nie je jasné, o čo ide, opýtaj sa jednou vetou.",
+          "V tejto aplikácii nemáš prístup k e-mailom, kalendáru, CRM, Disku ani internetu. Nič neodosielaš ani neukladáš. Keď treba niečo odoslať, zapísať do kalendára alebo uložiť poznámku, priprav hotový text a povedz, že to urobí Lili v aplikácii Claude (tlačidlo „↗ Claude app“) alebo to skopíruje sám.",
+          "Keď niečo nevieš, povedz to jednou vetou a nevymýšľaj si údaje (ceny, termíny, kontakty). Nikdy si nepýtaj heslá ani platobné údaje.",
+          extra ? "Doplňujúce informácie od majiteľa:\n" + extra : "",
+          "Teraz je " + now.toLocaleString("sk-SK", { weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }) + "."
+        ].filter(Boolean).join("\n\n");
+      }
+
+      // posledných ~30 správ, začínajúc správou používateľa
+      function recent() {
+        let h = history.slice(-30);
+        while (h.length && h[0].role !== "user") h = h.slice(1);
+        return h;
+      }
+
+      // ---------- Claude (Messages API) ----------
+      async function askClaude() {
+        const key = store.get(S.claudeKey).trim();
+        if (!key) throw new UserError("Chýba kľúč Claude API – vlož ho v ⚙️ Nastaveniach, alebo prepni hore na Gemini.");
+        const model = store.get(S.claudeModel) || "claude-opus-5-5";
+        const messages = recent().map((m) => m.role === "user"
+          ? { role: "user", content: m.text }
+          : { role: "assistant", content: m.claudeContent || m.text });
+        const body = { model, max_tokens: 16000, system: systemPrompt(), messages, output_config: { effort: "low" } };
+        const headers = {
+          "content-type": "application/json",
+          "x-api-key": key,
+          "anthropic-version": "2026-10-21",
+          "anthropic-dangerous-direct-browser-access": "true"
+        };
+        if (model !== "claude-haiku-5-5") { body.fallbacks = "default"; headers["anthropic-beta"] = "server-side-fallback-2026-07-01"; }
+        const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers, body: JSON.stringify(body) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const msg = (data.error && data.error.message) || "";
+          if (res.status === 401) throw new UserError("Kľúč Claude API nie je platný. Skontroluj ho v Nastaveniach.");
+          if (res.status === 429) throw new UserError("Claude je teraz preťažený alebo si dosiahol limit. Skús o chvíľu, alebo prepni na Gemini.");
+          if (/credit|balance|billing/i.test(msg)) throw new UserError("Na účte Claude API došiel kredit. Nabi ho na platform.claude.com → Billing, alebo prepni na Gemini.");
+          throw new UserError("Claude vrátil chybu (" + res.status + "). " + msg);
+        }
+        if (data.stop_reason === "refusal") throw new UserError("Na toto Claude neodpovie. Skús otázku preformulovať.");
+        const reply = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("").trim();
+        if (!reply) throw new UserError("Claude neposlal žiadnu odpoveď, skús znova.");
+        return { text: reply, via: "Claude", claudeContent: data.content };
+      }
+
+      // ---------- Gemini (zadarmo) ----------
+      async function geminiModel(key) {
+        const cached = store.get("lili.geminiModel");
+        if (cached) return cached;
+        let pick = "gemini-2.5-flash";
+        try {
+          const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", { headers: { "x-goog-api-key": key } });
+          if (r.ok) {
+            const list = ((await r.json()).models || [])
+              .filter((m) => (m.supportedGenerationMethods || []).includes("generateContent"))
+              .map((m) => m.name.replace(/^models\//, ""))
+              .map((n) => { const x = n.match(/^gemini-(\d+(?:\.\d+)?)-flash$/); return x ? { n, v: parseFloat(x[1]) } : null; })
+              .filter(Boolean).sort((a, b) => b.v - a.v);
+            if (list.length) pick = list[0].n;
+          }
+        } catch (e) {}
+        store.set("lili.geminiModel", pick);
+        return pick;
+      }
+      async function askGemini() {
+        const key = store.get(S.geminiKey).trim();
+        if (!key) throw new UserError("Chýba kľúč Gemini API – v ⚙️ Nastaveniach je návod, ako ho zadarmo získať.");
+        const model = await geminiModel(key);
+        const contents = recent().map((m) => ({ role: m.role === "user" ? "user" : "model", parts: [{ text: m.text }] }));
+        const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent", {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-goog-api-key": key },
+          body: JSON.stringify({ systemInstruction: { parts: [{ text: systemPrompt() }] }, contents })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const msg = (data.error && data.error.message) || "";
+          if (res.status === 404) store.del("lili.geminiModel");
+          if (res.status === 400 && /api key/i.test(msg)) throw new UserError("Kľúč Gemini API nie je platný. Skontroluj ho v Nastaveniach.");
+          if (res.status === 403) throw new UserError("Kľúč Gemini API nemá povolený prístup. Vytvor nový na aistudio.google.com/apikey.");
+          if (res.status === 429) throw new UserError("Bezplatný limit Gemini je na chvíľu vyčerpaný. Skús o minútu, alebo prepni hore na Claude.");
+          throw new UserError("Gemini vrátil chybu (" + res.status + "). " + msg);
+        }
+        const cand = (data.candidates || [])[0];
+        const reply = cand && cand.content ? (cand.content.parts || []).map((p) => p.text || "").join("").trim() : "";
+        if (!reply) throw new UserError(cand && cand.finishReason === "SAFETY" ? "Na toto Gemini neodpovie. Skús to inak alebo cez Claude." : "Gemini neposlal odpoveď, skús znova.");
+        return { text: reply, via: "Gemini" };
+      }
+
+      class UserError extends Error {}
+
+      // ---------- odoslanie ----------
+      let busy = false;
+      async function send(fromVoice) {
+        const msg = text.value.trim();
+        if (!msg || busy) return;
+        busy = true; sendBtn.disabled = true;
+        stopSpeaking();
+        if (!history.length) chat.innerHTML = "";
+        const u = { role: "user", text: msg };
+        history.push(u); saveHistory(); chat.appendChild(bubble(u));
+        text.value = ""; autosize();
+        const typing = document.createElement("div");
+        typing.className = "msg lili typing"; typing.innerHTML = "<span></span><span></span><span></span>";
+        chat.appendChild(typing); chat.scrollTop = chat.scrollHeight;
+        try {
+          const r = provider === "claude" ? await askClaude() : await askGemini();
+          typing.remove();
+          const m = { role: "lili", text: r.text, via: r.via };
+          if (r.claudeContent) m.claudeContent = r.claudeContent;
+          history.push(m); saveHistory(); chat.appendChild(bubble(m)); chat.scrollTop = chat.scrollHeight;
+          if ($("speak").checked) speak(r.text);
+        } catch (e) {
+          typing.remove();
+          // neúspešnú otázku vrátime do poľa, aby sa dala poslať znova
+          history.pop(); saveHistory(); render();
+          text.value = msg; autosize();
+          showError(e instanceof UserError ? e.message : "Nepodarilo sa spojiť. Skontroluj internet a skús znova.");
+        } finally {
+          busy = false; sendBtn.disabled = false;
+        }
+      }
+      sendBtn.addEventListener("click", () => send(false));
+      text.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !matchMedia("(pointer: coarse)").matches) { e.preventDefault(); send(false); } });
+      function autosize() { text.style.height = "auto"; text.style.height = Math.min(text.scrollHeight, 140) + "px"; }
+      text.addEventListener("input", autosize);
+
+      document.querySelectorAll(".chip[data-text], .chip[data-prefix]").forEach((c) => c.addEventListener("click", () => {
+        if (c.dataset.text) { text.value = c.dataset.text; send(false); }
+        else { text.value = c.dataset.prefix; autosize(); text.focus(); text.setSelectionRange(text.value.length, text.value.length); }
+      }));
+
+      // ---------- hlas: diktovanie ----------
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       let rec = null, listening = false, base = "";
-      if (!SR) {
-        status.textContent = "Diktovanie tu nefunguje – použi mikrofón na klávesnici.";
-      } else {
-        rec = new SR();
-        rec.lang = "sk-SK";
-        rec.interimResults = true;
-        rec.continuous = false;
-        rec.onstart = () => { listening = true; mic.classList.add("on"); status.textContent = "Počúvam…"; };
+      if (!SR) { mic.style.display = "none"; }
+      else {
+        rec = new SR(); rec.lang = "sk-SK"; rec.interimResults = true; rec.continuous = false;
+        rec.onstart = () => { listening = true; mic.classList.add("on"); stopSpeaking(); };
         rec.onresult = (e) => {
-          let s = "";
-          for (let i = 0; i < e.results.length; i++) s += e.results[i][0].transcript;
-          text.value = (base + s).trimStart();
+          let s = ""; for (let i = 0; i < e.results.length; i++) s += e.results[i][0].transcript;
+          text.value = (base + s).trimStart(); autosize();
         };
         rec.onerror = (e) => {
-          status.textContent = e.error === "not-allowed"
-            ? "Povoľ mikrofón: ťukni na zámok vedľa adresy → Povolenia."
-            : (e.error === "no-speech" ? "Nič som nepočula, skús znova." : "Diktovanie zlyhalo, skús znova.");
+          if (e.error === "not-allowed") toast("Povoľ mikrofón: ťukni na zámok vedľa adresy → Povolenia.");
+          else if (e.error === "no-speech") toast("Nič som nepočula, skús znova.");
         };
         rec.onend = () => {
           listening = false; mic.classList.remove("on");
-          if (status.textContent === "Počúvam…") status.textContent = text.value ? "Hotovo – skontroluj a pošli Lili." : "Ťukni na mikrofón a hovor";
+          if ($("autoSend").checked && text.value.trim() && text.value.trim() !== base.trim()) send(true);
         };
       }
       function startListening() {
         if (!rec || listening) return;
         base = text.value ? text.value.replace(/\s*$/, " ") : "";
-        try { rec.start(); } catch (e) { status.textContent = "Ťukni na mikrofón a hovor"; }
+        try { rec.start(); } catch (e) {}
       }
       mic.addEventListener("click", () => { listening ? rec.stop() : startListening(); });
 
-      // ---------- rýchle príkazy ----------
-      document.querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => {
-        if (c.dataset.text) { text.value = c.dataset.text; status.textContent = "Pošli Lili tlačidlom nižšie."; }
-        else { text.value = c.dataset.prefix; text.focus(); startListening(); }
-      }));
-
-      // ---------- odoslanie ----------
-      async function copy(s) {
-        try { await navigator.clipboard.writeText(s); return true; } catch (e) { return false; }
+      // ---------- hlas: odpovede nahlas ----------
+      function plain(s) { return s.replace(/\*\*|__|[*#`>]/g, "").replace(/^\s*[-•]\s+/gm, "").replace(/https?:\/\/\S+/g, "odkaz"); }
+      function speak(s) {
+        if (!("speechSynthesis" in window)) return;
+        const u = new SpeechSynthesisUtterance(plain(s));
+        u.lang = "sk-SK";
+        const v = speechSynthesis.getVoices().find((x) => /^sk/i.test(x.lang));
+        if (v) u.voice = v;
+        speechSynthesis.speak(u);
       }
-      function open(url) {
-        const w = window.open(url, "_blank", "noopener");
-        if (!w) location.href = url;
-      }
-      $("send").addEventListener("click", async () => {
-        const msg = text.value.trim();
-        if (!msg) { toast("Najprv povedz alebo napíš, čo má Lili urobiť."); return; }
-        const p = projectUrl();
-        if (p) {
-          const ok = await copy(msg);
-          toast(ok ? "Text je v schránke – v Claude podrž pole správy → Vložiť." : "Skopíruj text ručne, schránka nie je povolená.");
-          setTimeout(() => open(p), 600);
-        } else {
-          open("https://claude.ai/new?q=" + encodeURIComponent(msg));
-        }
-      });
-      $("talk").addEventListener("click", () => {
-        const p = projectUrl();
-        if (!p) toast("Tip: v Nastaveniach vlož odkaz na projekt Lili.");
-        open(p || "https://claude.ai/new");
-      });
-      $("gemini").addEventListener("click", async () => {
-        const msg = text.value.trim();
-        if (msg) { const ok = await copy(msg); if (ok) toast("Text je v schránke – v Gemini ho vlož."); }
-        setTimeout(() => open(gemUrl() || "https://gemini.google.com/app"), msg ? 600 : 0);
-      });
+      function stopSpeaking() { try { speechSynthesis.cancel(); } catch (e) {} }
+      if ("speechSynthesis" in window) speechSynthesis.getVoices();
 
-      // ---------- skratky z ikony (podrž ikonu Lili na ploche) ----------
+      // ---------- skratky z ikony ----------
       const akcia = new URLSearchParams(location.search).get("akcia");
-      if (akcia === "rano") { text.value = "Dobré ráno"; status.textContent = "Pošli Lili tlačidlom nižšie."; }
-      else if (akcia === "poznamka") { text.value = "Zapíš si poznámku: "; status.textContent = "Ťukni na mikrofón a nadiktuj poznámku"; }
-      else if (akcia === "hovor") { $("talk").click(); }
+      render();
+      if (akcia === "rano") { text.value = "Dobré ráno! Naplánuj mi dnešný deň."; send(false); }
+      else if (akcia === "poznamka") { text.value = "Pripomeň mi: "; autosize(); }
+      else if (akcia === "hovor") { startListening(); }
 
-      if (!projectUrl()) $("settings").open = true;
+      if (!store.get(S.geminiKey) && !store.get(S.claudeKey)) openSettings();
 
       if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
     })();

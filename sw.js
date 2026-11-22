@@ -3,7 +3,7 @@
 // Knižnice, ikony a obrázky: najprv cache.
 // Požiadavky na Firebase/Google (iný pôvod) sa NEcachujú – údaje zákazníkov
 // sa neukladajú do cache service workera.
-const CACHE = "yd-app-v4";
+const CACHE = "yd-app-v5";
 const PRECACHE = [
   "./",
   "./index.html",
