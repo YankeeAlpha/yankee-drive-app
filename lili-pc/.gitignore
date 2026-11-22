@@ -1,0 +1,4 @@
+.venv/
+hlas/
+nastavenia.json
+__pycache__/
